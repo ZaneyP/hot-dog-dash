@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.7.0">
+<meta name="version" content="1.8.0">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -35,6 +35,23 @@
   #victoryCard h1 { font-size:64px; letter-spacing:10px; }
   .confetti { position:absolute; top:-20px; width:10px; height:16px; opacity:.9; animation:fall linear infinite; }
   @keyframes fall { to { transform:translateY(110vh) rotate(720deg); } }
+  #overlay.victory { background:radial-gradient(ellipse at center, rgba(20,10,40,.35) 0%, rgba(20,10,40,.78) 100%); }
+  #fx { position:absolute; inset:0; pointer-events:none; display:none; }
+  #fx.on { display:block; }
+  #overlay #victoryCard { color:#fff; max-width:720px; }
+  #overlay #victoryCard p, #overlay #victoryCard h1 { color:#fff; }
+  #overlay #victoryCard p { opacity:.9; }
+  .vsub { font-size:14px; letter-spacing:8px; font-weight:800; color:#f2b705; animation:vin .8s ease-out both; }
+  .vtitle { font-size:96px !important; letter-spacing:14px !important; text-shadow:0 0 30px rgba(242,183,5,.6), 0 6px 0 rgba(0,0,0,.35); animation:vpop .9s cubic-bezier(.2,1.4,.4,1) both; }
+  .vtitle span { color:#d83a1e; } .vtitle em { color:#f2b705; font-style:normal; }
+  .medals { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:14px 0; }
+  .medals span { font-size:11px; letter-spacing:2px; font-weight:800; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.35); border-radius:20px; padding:5px 10px; animation:vin .6s ease-out both; }
+  .medals span:nth-child(2) { animation-delay:.15s } .medals span:nth-child(3) { animation-delay:.3s } .medals span:nth-child(4) { animation-delay:.45s } .medals span:nth-child(5) { animation-delay:.6s }
+  .vstats { display:flex; gap:28px; justify-content:center; margin:10px 0 6px; }
+  .vstats b { display:block; font-size:34px; font-weight:900; } .vstats small { font-size:10px; letter-spacing:3px; opacity:.8; }
+  #victoryCard .go { color:#fff; }
+  @keyframes vpop { from { transform:scale(.3); opacity:0; } to { transform:scale(1); opacity:1; } }
+  @keyframes vin { from { transform:translateY(16px); opacity:0; } to { transform:none; opacity:1; } }
   #ver { position:absolute; right:10px; bottom:8px; font-size:11px; opacity:.45; font-weight:600; }
   #vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(242,183,5,0) 50%, rgba(216,58,30,.6) 100%); opacity:0; transition:opacity .15s; }
   #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:repeating-linear-gradient(90deg, rgba(255,250,240,.94) 0 40px, rgba(255,214,214,.94) 40px 80px); cursor:pointer; }
@@ -71,10 +88,11 @@
   <div id="bossbar" class="hidden"><div class="bn" id="bossName">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.7.0</div>
+  <div id="ver">v1.8.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
+<canvas id="fx"></canvas>
 <div id="overlay">
   <div class="card" id="startCard">
     <h1>HOT <span>DOG</span> <em>DASH</em></h1>
@@ -105,9 +123,11 @@
     <div class="go" id="wGo">CLICK FOR THE NEXT PIER</div>
   </div>
   <div class="card hidden" id="victoryCard">
-    <h1>VIC<span>TO</span><em>RY</em></h1>
+    <div class="vsub">BOARDWALK CHAMPION</div>
+    <h1 class="vtitle">VIC<span>TO</span><em>RY</em></h1>
     <p>Five piers. Five giant wieners. All of them sent home.<br>The boardwalk is yours.</p>
-    <p style="font-weight:800"><span id="vDist">0</span> m run &middot; <span id="vKills">0</span> vendors shoved &middot; <span id="vSmacks">0</span> hot dogs smacked</p>
+    <div class="medals"><span>&#9733; THE BOARDWALK</span><span>&#9733; SUNSET PIER</span><span>&#9733; NIGHT MARKET</span><span>&#9733; STORM PIER</span><span>&#9733; THE END OF THE PIER</span></div>
+    <div class="vstats"><div><b id="vDist">0</b><small>METRES RUN</small></div><div><b id="vKills">0</b><small>VENDORS SHOVED</small></div><div><b id="vSmacks">0</b><small>DOGS SMACKED</small></div></div>
     <div class="go">CLICK TO RUN IT ALL AGAIN</div>
   </div>
   <div class="card hidden" id="pauseCard">
@@ -120,7 +140,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -444,6 +464,10 @@ function genChunk() {
     addTent(ch, c.x + side * rand(22, 55), ch.zStart - rand(0, ch.zStart - c.z), rand(5, 10), rand(6, 14));
   }
   if (i % 5 === 2) addWheel(ch, c.x + (Math.random() < 0.5 ? -1 : 1) * rand(40, 60), ch.zStart - 10, rand(14, 22));
+  if (i > 2 && type !== 'arena' && Math.random() < (LEVELS[level].gulls || 0)) {
+    const perch = new THREE.Vector3(c.x + rand(-6, 6), c.y + rand(5, 8), ch.zStart - rand(4, Math.max(6, ch.zStart - c.z - 4)));
+    const gb = spawnBullet(perch, new THREE.Vector3(0, 0, -1), null, { kind: 'gull', speed: 0.01, grav: 0, r: 0.6, life: 60 }); gb.perch = perch; ch.gulls = (ch.gulls || []).concat(gb);
+  }
   for (let k = 0; k < 2; k++) addPiling(ch, c.x + rand(-6, 6), ch.zStart - rand(2, ch.zStart - c.z - 2));
   // vendors need clear floor under them and nothing (crates, walls, barriers) within reach of their cart
   const clear = (x, y, z) => {
@@ -499,6 +523,7 @@ function addPiling(ch, x, z) {
 function rebuildBoxes() { boxes = []; for (const ch of chunks) boxes.push(...ch.boxes); }
 function dropChunk(ch) {
   scene.remove(ch.group);
+  for (const gb of ch.gulls || []) { const k = bullets.indexOf(gb); if (k >= 0) { removeBullet(gb); bullets.splice(k, 1); } }
   for (const a of ch.agents) a.dispose();
   agents = agents.filter(a => !ch.agents.includes(a));
   for (let i = wheels.length - 1; i >= 0; i--) if (wheels[i].ch === ch) wheels.splice(i, 1);
@@ -514,24 +539,26 @@ const hatMat = striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), 'floa
 const telMat = new THREE.LineBasicMaterial({ color: 0xf2b705, transparent: true, opacity: 0 });
 const umbMat = striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), STRIPES);
 class Agent {
-  constructor([x, y, z], d) {
+  constructor([x, y, z], d, kind) {
+    this.kind = kind || pick(LEVELS[level].vendors || ['hotdog']); const K = KINDS[this.kind];
     this.pos = new THREE.Vector3(x, y, z);
     this.alive = true; this.d = d;
     this.aim = 0; this.aimTime = clamp(2.4 - d * 1.2, 1.1, 2.4) * rand(0.85, 1.15);
     this.yelled = false; this.voice = rand(0.6, 1.5);
     this.group = new THREE.Group(); this.group.position.copy(this.pos);
     // vendor: striped shirt body, white apron, paper hat, throwing arm; stands behind a cart with an umbrella
-    const body = new THREE.Mesh(capGeo, striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), 'float hs = step(0.5, fract(vWP.y * 6.0)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), hs);')); body.position.y = 0.85; body.castShadow = true;
+    const body = new THREE.Mesh(capGeo, striped(new THREE.MeshLambertMaterial({ color: K.shirt }), 'float hs = step(0.5, fract(vWP.y * 6.0)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), hs);')); body.position.y = 0.85; body.castShadow = true;
     const apron = new THREE.Mesh(unitBox, apronMat); apron.position.set(0, 0.7, -0.2); apron.scale.set(0.45, 0.7, 0.12);
     const legs = new THREE.Mesh(unitBox, darkMat); legs.position.y = 0.25; legs.scale.set(0.4, 0.5, 0.3);
     const head = new THREE.Mesh(headGeo, skinMat); head.position.y = 1.5; head.castShadow = true;
-    const hat = new THREE.Mesh(cylGeo, hatMat); hat.position.y = 1.72; hat.scale.set(0.17, 0.22, 0.17);
+    const hat = new THREE.Mesh(cylGeo, striped(new THREE.MeshLambertMaterial({ color: K.shirt }), 'float hs = step(0.5, fract(vWP.y * 8.0)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), hs);')); hat.position.y = 1.72; hat.scale.set(0.17, 0.22, 0.17);
     this.gun = new THREE.Mesh(armGeo, skinMat); this.gun.position.set(0.3, 1.25, -0.25);
-    const held = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.25, 3, 6), sausageMat); held.rotation.z = Math.PI / 2; held.position.set(0, 0.06, -0.3); this.gun.add(held);
+    const held = this.kind === 'hotdog' ? new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.25, 3, 6), sausageMat) : new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshLambertMaterial({ color: K.held }));
+    held.rotation.z = Math.PI / 2; held.position.set(0, 0.06, -0.3); this.gun.add(held);
     const cart = new THREE.Mesh(unitBox, metalMat); cart.position.set(0, 0.45, -0.95); cart.scale.set(1.3, 0.8, 0.7);
-    const cartTop = new THREE.Mesh(unitBox, striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), STRIPES)); cartTop.position.set(0, 0.9, -0.95); cartTop.scale.set(1.35, 0.12, 0.75);
+    const cartTop = new THREE.Mesh(unitBox, striped(new THREE.MeshLambertMaterial({ color: K.cart }), STRIPES)); cartTop.position.set(0, 0.9, -0.95); cartTop.scale.set(1.35, 0.12, 0.75);
     const pole = new THREE.Mesh(cylGeo, darkMat); pole.position.set(0.5, 1.5, -0.95); pole.scale.set(0.03, 1.4, 0.03);
-    const umb = new THREE.Mesh(coneGeo, umbMat); umb.position.set(0.5, 2.25, -0.95); umb.scale.set(1.2, 0.35, 1.2);
+    const umb = new THREE.Mesh(coneGeo, striped(new THREE.MeshLambertMaterial({ color: K.umb }), STRIPES)); umb.position.set(0.5, 2.25, -0.95); umb.scale.set(1.2, 0.35, 1.2);
     for (const wx of [-0.5, 0.5]) { const wh = new THREE.Mesh(cylGeo, darkMat); wh.rotation.z = Math.PI / 2; wh.position.set(wx, 0.2, -0.95); wh.scale.set(0.2, 0.08, 0.2); this.group.add(wh); }
     cart.castShadow = true;
     this.group.add(body, apron, legs, head, hat, this.gun, cart, cartTop, pole, umb);
@@ -553,7 +580,7 @@ class Agent {
     if (los) { const a = [g.x, g.y, g.z], b = [eye.x, eye.y, eye.z]; for (const bx of boxes) if (segHitsBox(a, b, bx)) { los = false; break; } }
     if (los) this.aim += wdt; else this.aim = Math.max(0, this.aim - wdt * 2);
     const t = this.aim / this.aimTime;
-    if (t > 0.55 && !this.yelled) { this.yelled = true; yell(this, 'wind'); }
+    if (t > 0.55 && !this.yelled) { this.yelled = true; yell(this, 'wind', KIND_YELLS[this.kind] && Math.random() < 0.6 ? { wind: KIND_YELLS[this.kind] } : YELLS); }
     if (t < 0.2) this.yelled = false;
     this.tel.material.opacity = t > 0.55 ? (t - 0.55) / 0.45 * 0.8 : 0;
     if (this.tel.material.opacity > 0) {
@@ -564,12 +591,13 @@ class Agent {
     if (this.aim >= this.aimTime) {
       this.aim = 0; this.aimTime *= rand(0.9, 1.1);
       // partial target leading at higher difficulty
-      const lead = (dist / BULLET_SPEED) * this.d * 0.7;
+      const B = KINDS[this.kind].bullet;
+      const lead = (dist / B.speed) * this.d * 0.7;
       const target = tmpC.set(eye.x + P.vel.x * lead, eye.y - 0.4 + P.vel.y * lead * 0.3, eye.z + P.vel.z * lead);
-      const dir = throwDir(g, target);
+      const dir = B.grav > 0 ? throwDir(g, target, B.speed, BULLET_G * B.grav) : target.clone().sub(g).normalize();
       const spread = 0.04 * (1 - this.d * 0.6);
       dir.x += rand(-spread, spread); dir.y += rand(-spread, spread) * 0.5; dir.z += rand(-spread, spread); dir.normalize();
-      spawnBullet(g, dir, this);
+      spawnBullet(g, dir, this, { ...B, kind: this.kind });
       SFX.shot(timeScale);
     }
   }
@@ -585,11 +613,11 @@ class Agent {
 // ---------- Bullets & fragments ----------
 const BULLET_SPEED = 26, BULLET_G = 11;
 // launch direction so a hot dog thrown at BULLET_SPEED under BULLET_G lands on the target (low arc); falls back to a lob
-function throwDir(from, to, v = BULLET_SPEED) {
+function throwDir(from, to, v = BULLET_SPEED, g = BULLET_G) {
   const dx = to.x - from.x, dz = to.z - from.z, D = Math.hypot(dx, dz), H = to.y - from.y;
   const v2 = v * v;
-  const disc = v2 * v2 - BULLET_G * (BULLET_G * D * D + 2 * H * v2);
-  const theta = disc >= 0 ? Math.atan((v2 - Math.sqrt(disc)) / (BULLET_G * D)) : Math.PI / 4;
+  const disc = v2 * v2 - g * (g * D * D + 2 * H * v2);
+  const theta = disc >= 0 ? Math.atan((v2 - Math.sqrt(disc)) / (g * D)) : Math.PI / 4;
   return new THREE.Vector3(dx / D * Math.cos(theta), Math.sin(theta), dz / D * Math.cos(theta));
 }
 const bunGeo = new THREE.CapsuleGeometry(0.1, 0.34, 3, 8);
@@ -607,15 +635,38 @@ function makeHotDog() {
 }
 const ringGeo = new THREE.RingGeometry(0.42, 0.56, 28);
 const ringMat = new THREE.MeshBasicMaterial({ color: 0xf2b705, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
+const pinkMat2 = new THREE.MeshLambertMaterial({ color: 0xf7a8c4 }), mintMat = new THREE.MeshLambertMaterial({ color: 0x9fe7d8 }), creamMat = new THREE.MeshLambertMaterial({ color: 0xfff4e0 });
+const coneMat = new THREE.MeshLambertMaterial({ color: 0xd9a066 }), fluffMat = new THREE.MeshLambertMaterial({ color: 0xf4a3d8 }), fluffMat2 = new THREE.MeshLambertMaterial({ color: 0xa9c8f5 });
+const ringToss = [striped(new THREE.MeshLambertMaterial({ color: 0x2f6fb5 }), STRIPES), striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), STRIPES)];
+const gullMat = new THREE.MeshLambertMaterial({ color: 0xf6f6f6 }), beakMat = new THREE.MeshLambertMaterial({ color: 0xf2a033 });
+function makeProjectile(kind) {
+  if (kind === 'icecream') { const g = new THREE.Group(); const c = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.4, 8), coneMat); c.rotation.x = Math.PI; c.position.y = -0.2; const sc = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), pick([pinkMat2, mintMat, creamMat])); sc.position.y = 0.05; g.add(c, sc); return g; }
+  if (kind === 'scoop') { const m = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), pick([pinkMat2, mintMat, creamMat])); return m; }
+  if (kind === 'cotton') { const g = new THREE.Group(); for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(rand(0.45, 0.7), 8, 6), i % 2 ? fluffMat2 : fluffMat); m.position.set(rand(-0.4, 0.4), rand(-0.35, 0.35), rand(-0.4, 0.4)); g.add(m); } const stick = new THREE.Mesh(cylGeo, creamMat); stick.scale.set(0.04, 1.2, 0.04); stick.position.y = -0.7; g.add(stick); return g; }
+  if (kind === 'ring') { const m = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.08, 8, 20), pick(ringToss)); return m; }
+  if (kind === 'gull') {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.35, 3, 8), gullMat); body.rotation.x = Math.PI / 2;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), gullMat); head.position.set(0, 0.08, -0.3);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), beakMat); beak.rotation.x = -Math.PI / 2; beak.position.set(0, 0.06, -0.46);
+    const wl = new THREE.Mesh(unitBox, gullMat); wl.scale.set(0.7, 0.03, 0.22); wl.position.x = -0.42;
+    const wr = wl.clone(); wr.position.x = 0.42;
+    g.add(body, head, beak, wl, wr); g.userData.wings = [wl, wr];
+    return g;
+  }
+  return makeHotDog();
+}
 function spawnBullet(p, dir, owner, opts = {}) {
-  const mesh = makeHotDog();
+  const mesh = makeProjectile(opts.kind || 'hotdog');
   const trail = new THREE.Mesh(trailGeo, trailMat);
   const ring = new THREE.Mesh(ringGeo, ringMat.clone()); scene.add(ring);
   const sc = opts.scale || 1;
   mesh.scale.setScalar(sc); trail.scale.set(sc, sc, 1);
   mesh.position.copy(p); mesh.lookAt(p.clone().add(dir));
   scene.add(mesh, trail);
-  bullets.push({ pos: p.clone(), vel: dir.clone().multiplyScalar(opts.speed || BULLET_SPEED), life: opts.big ? 7 : 5, mesh, trail, ring, owner, r: opts.r || 0.42, big: !!opts.big, deflected: false, phase: rand(0, 6.28) });
+  if (opts.kind && opts.kind !== 'hotdog') trail.visible = false;
+  const b = { pos: p.clone(), vel: dir.clone().multiplyScalar(opts.speed || BULLET_SPEED), life: opts.life || (opts.big ? 7 : 5), mesh, trail, ring, owner, r: opts.r || 0.42, big: !!opts.big, deflected: false, phase: rand(0, 6.28), kind: opts.kind || 'hotdog', grav: opts.grav ?? 1, homing: opts.homing || 0, split: !!opts.split, t: 0 };
+  bullets.push(b); return b;
 }
 function removeBullet(b) { scene.remove(b.mesh, b.trail, b.ring); }
 const fragGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
@@ -633,12 +684,24 @@ function spawnFrags(x, y, z, n = 12, sc = 1) {
 // ---------- The Big Wiener (final boss) ----------
 // ---------- Levels ----------
 // each pier is longer and meaner, with its own sky and its own giant at the end
+// vendor kinds: what they wear, what they throw, how it flies
+const KINDS = {
+  hotdog:   { shirt: 0xd83a1e, cart: 0xd83a1e, umb: 0xd83a1e, held: 0xb8402a, bullet: { speed: 26, grav: 1,    r: 0.42, life: 5 } },
+  icecream: { shirt: 0x6fd3c7, cart: 0xf7a8c4, umb: 0xf7a8c4, held: 0xf7a8c4, bullet: { speed: 24, grav: 0.9,  r: 0.4,  life: 5, split: true } },
+  cotton:   { shirt: 0xd84a9a, cart: 0x9b6fd3, umb: 0xf7a8c4, held: 0xf4a3d8, bullet: { speed: 12, grav: 0.12, r: 1.05, life: 9 } },
+  ring:     { shirt: 0x2f6fb5, cart: 0xf2b705, umb: 0x2f6fb5, held: 0xf2b705, bullet: { speed: 20, grav: 0,    r: 0.5,  life: 6, homing: 0.9 } },
+};
+const KIND_YELLS = {
+  icecream: ['BRAIN FREEZE, PAL!', 'TWO SCOOPS OF PAIN!', 'SPRINKLES INCOMING!', 'YOU SCREAM, I SCREAM!'],
+  cotton:   ['STICKY SITUATION!', 'SUGAR RUSH!', 'FLUFF YOU!', 'EAT CLOUD!'],
+  ring:     ['RING AROUND THE RUNNER!', 'STEP RIGHT UP!', 'WINNER WINNER!', 'EVERY THROW\'S A WINNER!'],
+};
 const LEVELS = [
-  { name: 'THE BOARDWALK',   len: 560,  dBase: 0,    sky: 0x9fd8ef, fog: 0xbfe6f5, sea: 0x3f9ec4, sun: 0xfff2d0, hemi: [0xdff3ff, 0xd9b27a], boss: 'THE BIG WIENER',        color: 0xb8402a, hp: 6,  scale: 24, throw: [3.2, 4.6], bigSpeed: 42, bpm: 138 },
-  { name: 'SUNSET PIER',     len: 700,  dBase: 0.25, sky: 0xf6a560, fog: 0xf9c99a, sea: 0x3a7fb0, sun: 0xffd9a0, hemi: [0xffe0b8, 0xc98a5a], boss: 'THE BRATWURST BARON',   color: 0xd9b48a, hp: 7,  scale: 25, throw: [2.9, 4.2], bigSpeed: 44, bpm: 144 },
-  { name: 'NIGHT MARKET',    len: 820,  dBase: 0.45, sky: 0x1b2a55, fog: 0x2d3f78, sea: 0x14305a, sun: 0xaabcff, hemi: [0x8aa0ff, 0x3b2f4a], boss: 'THE KIELBASA KING',     color: 0x7a2e22, hp: 8,  scale: 26, throw: [2.6, 3.8], bigSpeed: 46, bpm: 150 },
-  { name: 'STORM PIER',      len: 940,  dBase: 0.65, sky: 0x7d8792, fog: 0x9aa4ad, sea: 0x2f4f5c, sun: 0xd0d8e0, hemi: [0xbfc8d0, 0x55606a], boss: 'THE CHILI DOG CHAMPION', color: 0xc8341e, hp: 9,  scale: 27, throw: [2.3, 3.4], bigSpeed: 48, bpm: 156 },
-  { name: 'THE END OF THE PIER', len: 1100, dBase: 0.85, sky: 0xc77bd8, fog: 0xe3b3ef, sea: 0x4a2f7a, sun: 0xffe6ff, hemi: [0xffd6ff, 0x6a3f8a], boss: 'THE WURST OF ALL',      color: 0x3a1f1a, hp: 11, scale: 32, throw: [2.0, 3.0], bigSpeed: 52, bpm: 164, rage: true },
+  { name: 'THE BOARDWALK',   len: 560,  dBase: 0,    sky: 0x9fd8ef, fog: 0xbfe6f5, sea: 0x3f9ec4, sun: 0xfff2d0, hemi: [0xdff3ff, 0xd9b27a], boss: 'THE BIG WIENER',        color: 0xb8402a, hp: 6,  scale: 24, throw: [3.2, 4.6], bigSpeed: 42, bpm: 138, vendors: ['hotdog'], gulls: 0 },
+  { name: 'SUNSET PIER',     len: 700,  dBase: 0.25, sky: 0xf6a560, fog: 0xf9c99a, sea: 0x3a7fb0, sun: 0xffd9a0, hemi: [0xffe0b8, 0xc98a5a], boss: 'THE BRATWURST BARON',   color: 0xd9b48a, hp: 7,  scale: 25, throw: [2.9, 4.2], bigSpeed: 44, bpm: 144, vendors: ['icecream', 'icecream', 'hotdog'], gulls: 0.5 },
+  { name: 'NIGHT MARKET',    len: 820,  dBase: 0.45, sky: 0x1b2a55, fog: 0x2d3f78, sea: 0x14305a, sun: 0xaabcff, hemi: [0x8aa0ff, 0x3b2f4a], boss: 'THE KIELBASA KING',     color: 0x7a2e22, hp: 8,  scale: 26, throw: [2.6, 3.8], bigSpeed: 46, bpm: 150, vendors: ['cotton', 'cotton', 'icecream'], gulls: 0.4 },
+  { name: 'STORM PIER',      len: 940,  dBase: 0.65, sky: 0x7d8792, fog: 0x9aa4ad, sea: 0x2f4f5c, sun: 0xd0d8e0, hemi: [0xbfc8d0, 0x55606a], boss: 'THE CHILI DOG CHAMPION', color: 0xc8341e, hp: 9,  scale: 27, throw: [2.3, 3.4], bigSpeed: 48, bpm: 156, vendors: ['ring', 'ring', 'cotton'], gulls: 0.7 },
+  { name: 'THE END OF THE PIER', len: 1100, dBase: 0.85, sky: 0xc77bd8, fog: 0xe3b3ef, sea: 0x4a2f7a, sun: 0xffe6ff, hemi: [0xffd6ff, 0x6a3f8a], boss: 'THE WURST OF ALL',      color: 0x3a1f1a, hp: 11, scale: 32, throw: [2.0, 3.0], bigSpeed: 52, bpm: 164, rage: true, vendors: ['hotdog', 'icecream', 'cotton', 'ring'], gulls: 0.9 },
 ];
 let level = 0, unlocked = 0, totalDist = 0, totalKills = 0, totalSmacks = 0;
 try { unlocked = clamp(+localStorage.getItem('hotdog_unlocked') || 0, 0, LEVELS.length - 1); } catch (e) {}
@@ -786,13 +849,42 @@ function levelCleared() {
   if (document.pointerLockElement) document.exitPointerLock();
   if (level === LEVELS.length - 1) {
     document.getElementById('vDist').textContent = totalDist; document.getElementById('vKills').textContent = totalKills; document.getElementById('vSmacks').textContent = totalSmacks;
-    showCard('victoryCard'); confetti();
+    showCard('victoryCard'); confetti(); document.getElementById('overlay').classList.add('victory'); fireworksStart(); victoryPan = true;
   } else {
     document.getElementById('wTitle').textContent = 'LEVEL ' + (level + 1) + ' CLEARED';
     document.getElementById('wText').textContent = LEVELS[level].boss.replace(/^THE /, 'The ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) + ' has been returned to sender. Next: ' + LEVELS[level + 1].name + '.';
     document.getElementById('wDist').textContent = distance; document.getElementById('wKills').textContent = kills;
     showCard('winCard');
   }
+}
+// fireworks on a 2D canvas over the scene during the victory screen
+const fx = document.getElementById('fx'), fxc = fx.getContext('2d');
+let fxOn = false, fxParts = [], fxNext = 0;
+function fireworksStart() { fxOn = true; fx.classList.add('on'); fxParts = []; fxNext = 0; fxLoop(); fanfare(); }
+function fireworksStop() { fxOn = false; fx.classList.remove('on'); }
+function fxLoop() {
+  if (!fxOn) return;
+  requestAnimationFrame(fxLoop);
+  fx.width = innerWidth; fx.height = innerHeight;
+  const now = performance.now();
+  if (now > fxNext) {
+    fxNext = now + rand(250, 650);
+    const cx = rand(0.1, 0.9) * fx.width, cy = rand(0.1, 0.5) * fx.height, hue = rand(0, 360), n = 70;
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, sp = rand(1.5, 5); fxParts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(0.8, 1.4), hue: hue + rand(-20, 20) }); }
+  }
+  fxc.clearRect(0, 0, fx.width, fx.height);
+  for (let i = fxParts.length - 1; i >= 0; i--) {
+    const q = fxParts[i]; q.x += q.vx; q.y += q.vy; q.vy += 0.05; q.vx *= 0.985; q.vy *= 0.985; q.life -= 0.016;
+    if (q.life <= 0) { fxParts.splice(i, 1); continue; }
+    fxc.fillStyle = 'hsla(' + q.hue + ',95%,' + (55 + q.life * 25) + '%,' + Math.min(1, q.life) + ')';
+    fxc.beginPath(); fxc.arc(q.x, q.y, 2 + q.life * 2, 0, 6.28); fxc.fill();
+  }
+}
+function fanfare() {
+  if (!AC || !MUSIC.lp) return;
+  const t0 = AC.currentTime + 0.1, run = [0, 4, 7, 12, 16, 19, 24, 19, 24, 28, 31, 36];
+  run.forEach((n, i) => xylo(t0 + i * 0.11, mf(n), 0.2));
+  [36, 40, 43, 48].forEach((n, i) => { xylo(t0 + 1.5 + i * 0.02, mf(n), 0.22); bass(t0 + 1.5, mf(-24), 1.2); });
 }
 function confetti() {
   const ov = document.getElementById('overlay'); ov.querySelectorAll('.confetti').forEach(c => c.remove());
@@ -811,7 +903,7 @@ function updateBossBar() {
   document.getElementById('bossName').textContent = boss.cfg.boss;
 }
 function flashBossBar() { const bb = document.getElementById('bossbar'); bb.style.transform = 'translateX(-50%) scale(1.12)'; setTimeout(() => { bb.style.transform = 'translateX(-50%)'; }, 180); }
-let shake = 0, hitstop = 0;
+let shake = 0, hitstop = 0, victoryPan = false;
 const splashMat = new THREE.MeshLambertMaterial({ color: 0xbfe9ff });
 function splash(x, y, z) {
   for (let i = 0; i < 60; i++) {
@@ -981,6 +1073,7 @@ function resetGame() {
   applyLevel();
   if (boss) boss.dispose(); boss = new Boss(0, BOSS_Y, BOSS_Z); arenaDone = false; inBossZone = false; won = false;
   document.getElementById('overlay').querySelectorAll('.confetti').forEach(c => c.remove());
+  document.getElementById('overlay').classList.remove('victory'); fireworksStop(); victoryPan = false;
   document.getElementById('bossbar').classList.add('hidden'); document.getElementById('bMust').classList.add('hidden'); document.getElementById('banner').style.opacity = 0;
   agents = []; chunkIndex = 0; cursor.x = 0; cursor.y = 0; cursor.z = 0;
   P.pos.set(0, 0.01, 0); P.vel.set(0, 0, 0); P.yaw = 0; P.pitch = 0; P.roll = 0;
@@ -1218,7 +1311,22 @@ function updateWorld(wdt) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     const ox = b.pos.x, oy = b.pos.y, oz = b.pos.z;
-    b.vel.y -= BULLET_G * wdt; b.pos.addScaledVector(b.vel, wdt); b.life -= wdt;
+    b.t += wdt;
+    const eyeB = tmpA.set(P.pos.x, P.pos.y + P.eye, P.pos.z);
+    if (b.kind === 'gull' && !b.deflected) {
+      // seagull: circles its perch until you're close, then dives at you; climbs away after the pass
+      const dE = eyeB.distanceTo(b.pos);
+      if (!b.diving && dE < 32 && P.alive) { b.diving = true; b.diveT = 0; yell({ pos: b.pos, voice: 1.9 }, 'gull', { gull: ['MINE!', 'MINE! MINE!', 'SQUAAAWK!'] }); }
+      if (!b.diving) { const c = b.perch; b.pos.set(c.x + Math.cos(b.t * 0.8) * 5, c.y + Math.sin(b.t * 1.6) * 0.6, c.z + Math.sin(b.t * 0.8) * 5); b.vel.set(-Math.sin(b.t * 0.8) * 4, 0, Math.cos(b.t * 0.8) * 4); }
+      else { b.diveT += wdt; if (b.diveT < 2.6) { const want = tmpD.copy(eyeB).sub(b.pos).normalize().multiplyScalar(17); b.vel.lerp(want, Math.min(1, wdt * 3)); } else { b.vel.y += 20 * wdt; b.life = Math.min(b.life, 2.5); } }
+    } else if (b.homing && !b.deflected && P.alive) {
+      const spd = b.vel.length(), want = tmpD.copy(eyeB).sub(b.pos).normalize().multiplyScalar(spd); b.vel.lerp(want, Math.min(1, wdt * b.homing * 1.6));
+    }
+    if (b.kind !== 'gull' || b.deflected) b.vel.y -= BULLET_G * b.grav * wdt;
+    if (b.kind !== 'gull' || b.diving || b.deflected) b.pos.addScaledVector(b.vel, wdt);
+    b.life -= wdt;
+    // ice cream cone splits into three scoops at the top of its arc
+    if (b.split && !b.deflected && b.vel.y < 0) { b.split = false; for (let k = -1; k <= 1; k++) { const v = b.vel.clone(); v.x += k * 2.2 * Math.cos(Math.atan2(v.z, v.x) + Math.PI / 2); v.z += k * 2.2 * Math.sin(Math.atan2(v.z, v.x) + Math.PI / 2); v.y += 1.5; const nb = spawnBullet(b.pos, v.clone().normalize(), b.owner, { kind: 'scoop', speed: v.length(), grav: 0.9, r: 0.36, life: 4 }); } removeBullet(b); bullets.splice(i, 1); continue; }
     let dead = b.life <= 0 || b.pos.y < -30;
     // player hit (3 sample points on the capsule)
     if (!dead && b.deflected && boss && boss.alive) {
@@ -1237,9 +1345,13 @@ function updateWorld(wdt) {
     }
     if (!dead) for (const bx of boxes) if (pointInBox(b.pos.x, b.pos.y, b.pos.z, bx)) { dead = true; if (b.big) spawnFrags(b.pos.x, b.pos.y + 0.5, b.pos.z, 14, 1.4); break; }
     if (dead) { removeBullet(b); bullets.splice(i, 1); continue; }
-    b.mesh.position.copy(b.pos); b.mesh.rotateX(wdt * (b.big ? 3 : 12));   // end-over-end tumbling hot dog
+    b.mesh.position.copy(b.pos);
+    if (b.kind === 'gull') { b.mesh.lookAt(tmpD.copy(b.pos).add(b.vel)); b.mesh.rotateY(Math.PI); const f = Math.sin(performance.now() / 70) * 0.7; b.mesh.userData.wings[0].rotation.z = f; b.mesh.userData.wings[1].rotation.z = -f; }
+    else if (b.kind === 'ring') { b.mesh.lookAt(tmpD.copy(b.pos).add(b.vel)); b.mesh.rotateZ(b.t * 9); }
+    else if (b.kind === 'cotton') { b.mesh.rotation.y += wdt * 1.5; }
+    else b.mesh.rotateX(wdt * (b.big ? 3 : 12));   // end-over-end tumbling
     // short trail aligned to the flight path (not to the tumbling hot dog)
-    const sp = b.vel.length(), tl = Math.min((5 - b.life) * sp, b.big ? 6 : 2.5);
+    const sp = Math.max(b.vel.length(), 0.01), tl = Math.min((5 - b.life) * sp, b.big ? 6 : 2.5);
     b.trail.scale.z = Math.max(tl, 0.01); b.trail.position.copy(b.pos).addScaledVector(b.vel, -tl / 2 / sp); b.trail.lookAt(tmpD.copy(b.pos).add(b.vel));
   }
   for (const w of wheels) w.hub.rotation.z += wdt * 0.25;
@@ -1258,13 +1370,14 @@ let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+  if (victoryPan) { camera.rotation.y += dt * 0.12; camera.rotation.x += (0.18 - camera.rotation.x) * dt; }
   if (!started || paused) { renderer.render(scene, camera); return; }
   tick(dt);
   renderer.render(scene, camera);
 }
 function tick(dt) {
 
-  if (P.alive) {
+  if (P.alive && !victoryPan) {
     updatePlayer(dt);
     const hs = Math.hypot(P.vel.x, P.vel.z);
     let target = won ? 0.35 : clamp(0.03 + Math.max(hs / RUN, Math.abs(P.vel.y) / 11, Math.min(1, lookSpeed / 5) * 0.45, P.punchT < 0.3 || kickL > 0.5 || kickR > 0.5 ? 0.5 : 0), 0.03, 1);
@@ -1275,7 +1388,7 @@ function tick(dt) {
     if (hitstop > 0) { hitstop -= dt; target = Math.min(target, 0.06); timeScale = Math.min(timeScale, 0.2); }
     timeScale += (target - timeScale) * Math.min(1, dt * (target > timeScale ? 14 : danger ? 30 : 7));
     distance = Math.max(distance, Math.floor(-P.pos.z));
-  } else {
+  } else if (!P.alive) {
     timeScale += (0.12 - timeScale) * Math.min(1, dt * 5);
     camera.rotation.z += (0.5 - camera.rotation.z) * dt * 3;
     camera.position.y += ((P.pos.y + 0.35) - camera.position.y) * Math.min(1, dt * 2.5);
