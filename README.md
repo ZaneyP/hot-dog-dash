@@ -9,13 +9,15 @@ or let them pelt each other. Every hot dog carries a pulsing ring (red once it's
 time snaps into slow-mo and a click **smacks** it back toward whatever you're looking at — vendors, or the boss.
 A procedural xylophone track (16-step sequencer, kick/snare/hat, bass) plays throughout; it muffles as time slows
 and speeds up in the boss zone. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
-scale with a synth harmony underneath); only vendors within ~24 m are audible.
+scale with a synth harmony underneath); one vendor sings at a time, each word lands on a beat of the music, and only
+vendors within ~24 m are audible. Your slapping arm is a big floppy hot dog that whips in from off-screen.
 
 **The Big Wiener** — a ~180 m hot dog standing in the sea at the end of the pier — is visible from the moment you spawn
 and grows as you run (it's exempt from fog and hazed by distance instead). The pier bridges into an arena at its feet
-(560 m); there it winds up and lobs giant hot dogs down at you. In the arena you get a ketchup gun (left click / Q) and a mustard gun (right click / E). The boss
-alternates which condiment it "wants" (shown under its HP bar); matching hits do 3 damage, the other does 1.
-Condiments also knock hot dogs — even the giant ones — out of the air. Beat it for the win screen.
+(560 m); there it winds up and lobs giant hot dogs down at you. The fight is a duel of reflexes: when a giant dog gets
+close, time snaps into slow-mo — smack it and it flies straight back into his chest. Six returned dogs finish him
+(hitstop, camera shake and a stagger on every hit; at three he goes ENRAGED and throws twice). On the last hit he
+topples backward into the sea.
 
 - `public/index.html` — the entire game (no build step; Three.js is loaded from a CDN)
 - `wrangler.jsonc` — Cloudflare Pages config (`pages_build_output_dir: ./public`)
@@ -28,12 +30,11 @@ Condiments also knock hot dogs — even the giant ones — out of the air. Beat 
 | Mouse | look (pointer lock) |
 | Space | jump, wall-jump |
 | Shift | slide |
-| Click | smack a close hot dog · shove a vendor · ketchup gun in the arena |
-| Right click / E | mustard gun (arena only) |
+| Click / right click | smack a close hot dog · shove a vendor |
 | Air + wall + forward | wall-run |
 | M | mute |
 
-Touch devices get a virtual joystick, drag-to-look, and JUMP / SHOVE buttons (plus MUSTARD in the arena).
+Touch devices get a virtual joystick, drag-to-look, and JUMP / SHOVE buttons.
 
 ## Versioning
 

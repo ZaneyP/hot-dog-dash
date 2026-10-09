@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.5.0">
+<meta name="version" content="1.6.0">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -19,7 +19,7 @@
   #lockHint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:10px; font-weight:700; letter-spacing:2px; opacity:.55; }
   .yell { position:absolute; transform:translate(-50%,-100%); background:#fffdf7; color:#2a1a0e; border:2px solid #2a1a0e; border-radius:12px; padding:3px 9px; font-weight:900; font-size:13px; letter-spacing:.5px; white-space:nowrap; pointer-events:none; text-shadow:none; box-shadow:0 2px 0 rgba(0,0,0,.25); }
   .yell::after { content:''; position:absolute; left:50%; bottom:-7px; width:8px; height:8px; margin-left:-4px; background:#fffdf7; border-right:2px solid #2a1a0e; border-bottom:2px solid #2a1a0e; transform:rotate(45deg); }
-  #bossbar { position:absolute; left:50%; top:44px; transform:translateX(-50%); width:320px; text-align:center; }
+  #bossbar { position:absolute; left:50%; top:44px; transform:translateX(-50%); width:320px; text-align:center; transition:transform .15s; }
   #bossbar .bn { font-weight:900; font-size:13px; letter-spacing:3px; margin-bottom:4px; }
   #bossbar .bb { height:10px; background:rgba(0,0,0,.15); border-radius:5px; overflow:hidden; border:2px solid #2a1a0e; }
   #bfill { height:100%; width:100%; background:linear-gradient(90deg,#d83a1e,#f2b705); transform-origin:left; }
@@ -65,7 +65,7 @@
   <div id="bossbar" class="hidden"><div class="bn">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.5.0</div>
+  <div id="ver">v1.6.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -80,7 +80,7 @@
       <b>Shift</b><span>slide</span>
       <b>Click</b><span>shove a vendor &middot; <b>smack</b> a close hot dog</span>
       <b>Air + wall</b><span>wall-run</span>
-      <b>Boss zone</b><span>L-click ketchup &middot; R-click mustard</span>
+      <b>Boss zone</b><span>smack his giant hot dogs back at him</span>
     </div>
     <p style="font-size:13px;opacity:.6">Stand still and the hot dogs hang in the air. When one gets close, time slows: click to smack it back at them.<br>At the end of the pier waits the Big Wiener. Bring condiments.</p>
     <div class="go">CLICK TO START</div>
@@ -107,7 +107,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -432,7 +432,23 @@ function genChunk() {
   }
   if (i % 5 === 2) addWheel(ch, c.x + (Math.random() < 0.5 ? -1 : 1) * rand(40, 60), ch.zStart - 10, rand(14, 22));
   for (let k = 0; k < 2; k++) addPiling(ch, c.x + rand(-6, 6), ch.zStart - rand(2, ch.zStart - c.z - 2));
-  for (const s of spots) { const a = new Agent(s, d); ch.agents.push(a); agents.push(a); ch.group.add(a.group); }
+  // vendors need clear floor under them and nothing (crates, walls, barriers) within reach of their cart
+  const clear = (x, y, z) => {
+    let floor = false;
+    for (const b of ch.boxes) {
+      const nearXZ = x + 1.6 > b.min[0] && x - 1.6 < b.max[0] && z + 1.6 > b.min[2] && z - 1.6 < b.max[2];
+      if (!nearXZ) continue;
+      if (Math.abs(b.top - y) < 0.05 && x > b.min[0] + 0.6 && x < b.max[0] - 0.6 && z > b.min[2] + 0.6 && z < b.max[2] - 0.6) { floor = true; continue; }
+      if (b.top > y + 0.05 && b.min[1] < y + 2.5) return false;
+    }
+    return floor;
+  };
+  for (const s of spots) {
+    let [x, y, z] = s, ok = clear(x, y, z);
+    for (let k = 0; k < 12 && !ok; k++) { x = s[0] + rand(-3.5, 3.5); z = s[2] + rand(-3.5, 3.5); ok = clear(x, y, z); }
+    if (!ok) continue;
+    const a = new Agent([x, y, z], d); ch.agents.push(a); agents.push(a); ch.group.add(a.group);
+  }
   ch.zEnd = c.z;
   chunks.push(ch);
   rebuildBoxes();
@@ -609,8 +625,9 @@ let boss = null, arenaDone = false, inBossZone = false, bossZoneZ = 0, won = fal
 const BOSS_YELLS = {
   wind: ['I AM THE WURST!', 'YOU CAN\'T RELISH THIS!', 'COME GET SOME, BUN!', 'FRESH OUT OF MERCY!', 'EAT THE BIG ONE!', 'NOBODY DASHES MY DOGS!'],
   crave: ['KETCHUP ME, COWARD!', 'MUSTARD! NOW!'],
-  hurt: ['OOH, THAT\'S THE GOOD STUFF!', 'NOT IN THE EYES!', 'I\'M GETTING SOGGY!', 'MY BUNS!'],
-  dead: ['TELL THE CART... I LOVED HER...'],
+  hurt: ['MY OWN DOG?!', 'NOT IN THE EYES!', 'THAT\'S MY RECIPE!', 'MY BUNS!', 'YOU DARE RETURN MY WIENER?!'],
+  rage: ['ENOUGH! NOW I\'M STEAMING!', 'RELISH YOUR LAST MOMENTS!'],
+  dead: ['TELL THE CART... I LOVED HER...', 'I... AM... DONE...'],
 };
 const ketchupMat = new THREE.MeshLambertMaterial({ color: 0xd81e1e });
 const mustardLMat = new THREE.MeshLambertMaterial({ color: 0xf2b705 });
@@ -625,7 +642,8 @@ function makeBottle(mat, h = 0.26) {
 }
 class Boss {
   constructor(x, y, z) {
-    this.pos = new THREE.Vector3(x, y, z); this.hp = 75; this.maxHp = 75; this.alive = true;
+    this.pos = new THREE.Vector3(x, y, z); this.hp = 6; this.maxHp = 6; this.alive = true;
+    this.stagger = 0; this.enraged = false; this.dying = 0; this.doubleT = 0;
     this.throwT = 3.5; this.craving = 'ketchup'; this.craveT = 8; this.voice = 0.45; this.yellH = 9.5 * BOSS_SCALE; this.yelled = false; this.t = 0;
     this.splats = []; bossMats.length = 0;
     const g = this.group = new THREE.Group(); g.position.copy(this.pos); g.scale.setScalar(BOSS_SCALE); scene.add(g);
@@ -667,48 +685,78 @@ class Boss {
     // atmospheric haze: fade toward the fog colour with distance so it looms as a silhouette, never fogged out
     const haze = clamp((dist - 120) / 480, 0, 0.78);
     for (const m of bossMats) m.color.copy(m.userData.base).lerp(scene.fog.color, haze);
-    if (!inBossZone) return;
-    this.craveT -= wdt;
-    if (this.craveT <= 0) { this.craveT = 8; this.craving = this.craving === 'ketchup' ? 'mustard' : 'ketchup'; yell(this, 'crave', { crave: [this.craving === 'ketchup' ? BOSS_YELLS.crave[0] : BOSS_YELLS.crave[1]] }); updateBossBar(); }
-    this.throwT -= wdt;
+    if (!inBossZone || won) return;
+    this.throwT -= wdt; if (this.doubleT > 0) this.doubleT -= wdt;
     const wind = clamp(1.2 - this.throwT, 0, 1);
     this.armR.rotation.x = -wind * 2.2;
     if (this.throwT < 1.2 && !this.yelled) { this.yelled = true; yell(this, 'wind', BOSS_YELLS); SFX.bossRoar(); }
-    if (this.throwT <= 0) {
-      this.yelled = false; this.throwT = rand(2.6, 4.2) - 1.2 * (1 - this.hp / this.maxHp);
-      this.heldDog.getWorldPosition(this.handWorld);
-      const lead = (dist / 42) * 0.45;
-      const target = tmpC.set(eye.x + P.vel.x * lead, eye.y - 0.3, eye.z + P.vel.z * lead);
-      spawnBullet(this.handWorld, throwDir(this.handWorld, target, 42), this, { speed: 42, scale: 14, r: 2.2, big: true });
-      SFX.shot(timeScale);
+    if (this.throwT <= 0 || (this.doubleT < 0 && this.doubleT > -1)) {
+      if (this.throwT <= 0) { this.yelled = false; this.throwT = this.enraged ? rand(2.2, 3.2) : rand(3.2, 4.6); if (this.enraged) this.doubleT = 0.7; }
+      if (this.doubleT < 0) this.doubleT = -5;                     // the enraged second throw fires once
+      this.throw(eye, dist);
     }
   }
-  hit(kind, point) {
+  throw(eye, dist) {
+    this.heldDog.getWorldPosition(this.handWorld);
+    const lead = (dist / 42) * 0.45;
+    const target = tmpC.set(eye.x + P.vel.x * lead, eye.y - 0.3, eye.z + P.vel.z * lead);
+    spawnBullet(this.handWorld, throwDir(this.handWorld, target, 42), this, { speed: 42, scale: 14, r: 2.2, big: true });
+    SFX.shot(timeScale);
+  }
+  // real-time animation (runs even when world time is frozen): stagger recoil, death collapse
+  updateReal(dt) {
+    if (this.stagger > 0) this.stagger = Math.max(0, this.stagger - dt * 0.9);
+    let tilt = -0.28 * Math.sin(this.stagger * Math.PI);
+    if (this.dying > 0) {
+      this.dying += dt;
+      const k = Math.min(this.dying / 3.2, 1), e = k * k;
+      tilt = -1.5 * e;                                           // topples backward into the sea
+      this.group.position.y = this.pos.y - 40 * e * e;
+      if (!this.splashed && k > 0.75) { this.splashed = true; splash(this.pos.x, -30, this.pos.z - 40); shake = 1.5; SFX.bossRoar(); }
+      if (k >= 1 && !this.finished) { this.finished = true; this.group.visible = false; setTimeout(() => { showCard('winCard'); if (document.pointerLockElement) document.exitPointerLock(); }, 600); }
+    }
+    this.group.rotation.x = tilt;
+  }
+  // only his own giant hot dogs hurt him; small ones just splat harmlessly
+  hit(kind, point, big = false) {
     if (!this.alive) return;
-    const dmg = kind === this.craving ? 3 : kind === 'dog' ? 2 : 1;
-    this.hp -= dmg; SFX.splat();
-    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.32 + dmg * 0.06, 8, 6), kind === 'ketchup' ? ketchupMat : kind === 'dog' ? bunMat : mustardLMat);
-    sp.position.copy(this.group.worldToLocal(point.clone())); sp.scale.z = 0.5; sp.scale.multiplyScalar(1.6); this.group.add(sp); this.splats.push(sp);
-    if (this.splats.length > 90) this.group.remove(this.splats.shift());
-    if (Math.random() < 0.18) yell(this, 'hurt', BOSS_YELLS);
-    updateBossBar();
+    const sp = new THREE.Mesh(new THREE.SphereGeometry(big ? 1.1 : 0.35, 8, 6), bunMat);
+    sp.position.copy(this.group.worldToLocal(point.clone())); sp.scale.z = 0.5; this.group.add(sp); this.splats.push(sp);
+    if (this.splats.length > 60) this.group.remove(this.splats.shift());
+    if (!big) { SFX.splat(); return; }
+    this.hp -= 1; this.stagger = 1; shake = 1.2; hitstop = 0.5;
+    spawnFrags(point.x, point.y, point.z, 46, 3.2);
+    SFX.bossRoar(); SFX.splat(); SFX.smack();
+    yell(this, 'hurt', BOSS_YELLS);
+    updateBossBar(); flashBossBar();
+    if (!this.enraged && this.hp <= 3 && this.hp > 0) { this.enraged = true; banner('ENRAGED', 'HE THROWS TWICE NOW'); setTimeout(() => yell(this, 'rage', BOSS_YELLS), 900); }
     if (this.hp <= 0) this.die();
   }
   die() {
-    this.alive = false; won = true; this.group.visible = false;
-    spawnFrags(this.pos.x, this.pos.y + 4 * BOSS_SCALE, this.pos.z, 90, 3.5);
+    this.alive = false; won = true; this.dying = 0.001; shake = 1;
+    for (const b of bullets.splice(0)) removeBullet(b);
     yell(this, 'dead', BOSS_YELLS); SFX.bossRoar(); SFX.death();
+    banner('TIMBER', 'THE BIG WIENER FALLS');
     if (distance > best) { best = distance; try { localStorage.setItem('hotdog_best', best); } catch (e) {} }
     document.getElementById('wDist').textContent = distance; document.getElementById('wKills').textContent = kills;
     document.getElementById('bossbar').classList.add('hidden');
-    setTimeout(() => { showCard('winCard'); if (document.pointerLockElement) document.exitPointerLock(); }, 1800);
   }
   dispose() { scene.remove(this.group); }
 }
 function updateBossBar() {
   if (!boss) return;
   document.getElementById('bfill').style.transform = 'scaleX(' + Math.max(0, boss.hp / boss.maxHp) + ')';
-  const c = document.getElementById('crave'); c.textContent = 'WANTS: ' + boss.craving.toUpperCase(); c.className = boss.craving === 'ketchup' ? 'k' : 'm';
+  const c = document.getElementById('crave'); c.textContent = boss.enraged ? 'ENRAGED' : 'SMACK HIS DOGS BACK'; c.className = boss.enraged ? 'k' : 'm';
+}
+function flashBossBar() { const bb = document.getElementById('bossbar'); bb.style.transform = 'translateX(-50%) scale(1.12)'; setTimeout(() => { bb.style.transform = 'translateX(-50%)'; }, 180); }
+let shake = 0, hitstop = 0;
+const splashMat = new THREE.MeshLambertMaterial({ color: 0xbfe9ff });
+function splash(x, y, z) {
+  for (let i = 0; i < 60; i++) {
+    const m = new THREE.Mesh(fragGeo, splashMat); m.position.set(x + rand(-25, 25), y, z + rand(-25, 25)); m.scale.setScalar(rand(2, 5));
+    scene.add(m);
+    frags.push({ mesh: m, vel: new THREE.Vector3(rand(-6, 6), rand(14, 36), rand(-6, 6)), rot: new THREE.Vector3(rand(-3, 3), rand(-3, 3), 0), life: 4 });
+  }
 }
 let bannerT = 0;
 function banner(text, sub) {
@@ -724,6 +772,7 @@ gunL.scale.setScalar(0.4); gunR.scale.setScalar(0.4);
 camera.add(gunL, gunR);
 let kickL = 0, kickR = 0, gunCdL = 0, gunCdR = 0;
 function fireGun(kind) {
+  return false;   // condiment guns retired: the boss is fought by smacking his own hot dogs back
   if (!inBossZone || !P.alive || won) return false;
   if (kind === 'ketchup' ? gunCdL > 0 : gunCdR > 0) return true;
   if (kind === 'ketchup') { gunCdL = 0.15; kickL = 1; } else { gunCdR = 0.15; kickR = 1; }
@@ -738,7 +787,7 @@ function fireGun(kind) {
 }
 function updateGuns(dt) {
   gunCdL -= dt; gunCdR -= dt; kickL *= Math.pow(0.001, dt); kickR *= Math.pow(0.001, dt);
-  gunL.visible = gunR.visible = inBossZone && P.alive;
+  gunL.visible = gunR.visible = false;
   gunL.position.set(-0.3, -0.3 + kickL * 0.03, -0.75 + kickL * 0.06); gunL.rotation.set(-1.15 - kickL * 0.35, 0, 0.2);
   gunR.position.set(0.3, -0.3 + kickR * 0.03, -0.75 + kickR * 0.06); gunR.rotation.set(-1.15 - kickR * 0.35, 0, -0.2);
 }
@@ -807,23 +856,32 @@ function harmony(freq, vol) {
   harmGain.gain.setTargetAtTime(0.09 * vol, AC.currentTime, 0.01);
 }
 function harmonyOff() { if (harmGain) harmGain.gain.setTargetAtTime(0, AC.currentTime, 0.04); }
+// one vendor sings at a time; each word is scheduled on a quarter-note of the music grid so the yelling sits in the beat
 function sing(line, voice, srcPos) {
-  if (muted || !('speechSynthesis' in window) || performance.now() < singingUntil) return;
+  if (muted || !('speechSynthesis' in window)) return;
+  if (performance.now() < singingUntil || speechSynthesis.speaking || speechSynthesis.pending) return;
   const d = srcPos ? Math.hypot(srcPos.x - P.pos.x, srcPos.z - P.pos.z) : 0;
   if (d > HEAR_RANGE) return;
   const vol = clamp(1 - d / HEAR_RANGE, 0.2, 1);
   const words = line.replace(/[!?,]/g, '').split(' ');
   let note = Math.floor(rand(2, SCALE.length - 2));
-  singingUntil = performance.now() + words.length * 400 + 250;
+  // beat grid: next quarter-note boundary from the sequencer (falls back to immediate if the music isn't running)
+  const stepDur = 60 / (inBossZone ? 160 : 138) / 4, beat = stepDur * 4;
+  let t0 = 0;
+  if (AC && MUSIC.timer) { const toBeat = (4 - (MUSIC.step % 4)) % 4; t0 = Math.max(0, MUSIC.nextT + toBeat * stepDur - AC.currentTime); }
+  singingUntil = performance.now() + (t0 + words.length * beat) * 1000 + 150;
+  const release = () => { singingUntil = 0; harmonyOff(); };
   words.forEach((w, i) => {
     note = clamp(note + pick([-4, -3, -2, 2, 3, 4]), 0, SCALE.length - 1);   // big stepped intervals
     const pitch = clamp(voice * Math.pow(2, SCALE[note] / 12), 0.1, 2);
-    const u = new SpeechSynthesisUtterance(w);
-    u.pitch = pitch; u.rate = 1.05; u.volume = vol;
-    if (robotVoice) u.voice = robotVoice;
-    u.onstart = () => harmony(150 * pitch, vol);
-    if (i === words.length - 1) u.onend = harmonyOff;
-    speechSynthesis.speak(u);
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(w);
+      u.pitch = pitch; u.rate = 1.3; u.volume = vol;
+      if (robotVoice) u.voice = robotVoice;
+      u.onstart = () => harmony(150 * pitch, vol);
+      if (i === words.length - 1) { u.onend = release; u.onerror = release; }
+      speechSynthesis.speak(u);
+    }, (t0 + i * beat) * 1000);
   });
 }
 function updateYells(dt) {
@@ -1003,7 +1061,16 @@ function smack() {
     const to = tmpC.copy(b.pos).sub(eye), d = to.length();
     if (d > SMACK_RANGE + b.r || to.normalize().dot(fwd) < 0.35) continue;
     P.punchT = 0; smacks++; SFX.smack();
-    if (b.big) { spawnFrags(b.pos.x, b.pos.y, b.pos.z, 18, 1.8); removeBullet(b); bullets.splice(i, 1); }
+    if (b.big) {
+      if (boss && boss.alive) {
+        // return to sender: straight at his chest, fast, with a beat of hitstop so the moment lands
+        const target = new THREE.Vector3(boss.pos.x, boss.group.position.y + 4.6 * BOSS_SCALE, boss.pos.z);
+        const flight = target.distanceTo(b.pos) / 75;
+        b.vel.copy(target).sub(b.pos).normalize().multiplyScalar(75); b.vel.y += 0.5 * BULLET_G * flight;
+        b.owner = null; b.deflected = true; b.life = 8; b.ring.material.color.set(0x3b7dd8);
+        hitstop = 0.3; shake = 0.5;
+      } else { spawnFrags(b.pos.x, b.pos.y, b.pos.z, 18, 1.8); removeBullet(b); bullets.splice(i, 1); }
+    }
     else {
       // send it back as your projectile: at a vendor in your look cone if there is one, else at where you're looking
       let target = tmpD.copy(eye).addScaledVector(fwd, 30), bestDot = 0.88;
@@ -1036,22 +1103,35 @@ function punch() {
   noise(0.08, 0.08, 1.5); // whiff
 }
 
-// fist + forearm (camera-attached)
-const gloveMat = new THREE.MeshLambertMaterial({ color: 0x2b2b2b });
-const fist = new THREE.Group();
-const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.11, 0.16), gloveMat);
-knuckle.add(new THREE.LineSegments(new THREE.EdgesGeometry(knuckle.geometry), edgeMat));
-const forearm = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.11, 0.3), new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }));
-forearm.add(new THREE.LineSegments(new THREE.EdgesGeometry(forearm.geometry), edgeMat));
-forearm.position.set(0.03, -0.05, 0.22); forearm.rotation.x = -0.2;
-fist.add(knuckle, forearm);
+// the slapping arm: a big floppy hot dog made of chained segments. It hangs below the frame at rest and
+// whips across the view on a slap; each segment lags the swing so it flops.
+const ARM_SEGS = 6, ARM_L = 0.17;
+const fist = new THREE.Group();                          // root pivot, bottom-right of the view, just off-screen
+const armSegs = [];
+{
+  let parent = fist;
+  for (let i = 0; i < ARM_SEGS; i++) {
+    const g = new THREE.Group(); g.position.y = i === 0 ? 0 : -ARM_L;
+    const dog = makeHotDog(); dog.rotation.x = Math.PI / 2; dog.rotation.z = Math.PI;   // length along -y, sausage facing the camera
+    const sc = 0.9 + (i === ARM_SEGS - 1 ? 0.35 : 0);                                   // fat "hand" at the tip
+    dog.scale.set(sc, sc, ARM_L / 0.5 * 1.15); dog.position.y = -ARM_L / 2;
+    g.add(dog); parent.add(g); armSegs.push(g); parent = g;
+  }
+}
 camera.add(fist);
-function updateFist() {
-  const t = Math.min(P.punchT / 0.28, 1);
-  const k = Math.sin(t * Math.PI);
-  fist.visible = t < 1;   // arm only appears for the jab
-  fist.position.set(0.36 - k * 0.28, -0.3 + k * 0.1, -0.8 - k * 0.55);
-  fist.rotation.set(0.25 + k * 0.2, -0.25 + k * 0.2, k * 0.3);
+let armSwing = 0.35, armVel = 0;
+function updateFist(dt) {
+  const t = Math.min(P.punchT / 0.38, 1);
+  // swing angle: rest (hanging down, off-screen) -> up-left across the view -> back
+  const rest = 0.35, peak = -2.5;
+  const k = t < 0.45 ? Math.sin(t / 0.45 * Math.PI / 2) : Math.cos((t - 0.45) / 0.55 * Math.PI / 2);
+  const target = rest + (peak - rest) * (t < 1 ? k : 0);
+  const prev = armSwing; armSwing = target; armVel = (armSwing - prev) / Math.max(dt, 1e-3);
+  fist.visible = t < 1;
+  fist.position.set(0.55, -0.62, -0.75);
+  fist.rotation.set(-0.35, -0.3, armSwing);
+  const bend = clamp(-armVel * 0.028, -0.55, 0.55);
+  for (let i = 0; i < ARM_SEGS; i++) armSegs[i].rotation.z = i === 0 ? 0 : bend * (0.5 + i * 0.35) + Math.sin(performance.now() / 180 + i) * 0.04;
 }
 
 // ---------- Game state ----------
@@ -1074,7 +1154,7 @@ function die() {
 function updateWorld(wdt) {
   // chunks
   while (!arenaDone && chunks.length && chunks[chunks.length - 1].zEnd > P.pos.z - 130) genChunk();
-  if (!inBossZone && arenaDone && P.pos.z < bossZoneZ) { inBossZone = true; banner('THE BIG WIENER', 'LEFT CLICK: KETCHUP &middot; RIGHT CLICK: MUSTARD &middot; FEED IT WHAT IT WANTS'); document.getElementById('bossbar').classList.remove('hidden'); document.getElementById('bMust').classList.toggle('hidden', !isTouch); updateBossBar(); if (boss) yell(boss, 'wind', BOSS_YELLS); }
+  if (!inBossZone && arenaDone && P.pos.z < bossZoneZ) { inBossZone = true; banner('THE BIG WIENER', 'WAIT FOR THE GIANT HOT DOG &middot; TIME SLOWS WHEN IT\'S CLOSE &middot; CLICK TO SMACK IT BACK AT HIM'); document.getElementById('bossbar').classList.remove('hidden'); updateBossBar(); if (boss) yell(boss, 'wind', BOSS_YELLS); }
   if (boss) boss.update(wdt);
   updateShots(wdt);
   while (chunks.length > 2 && chunks[0].zEnd > P.pos.z + 45) dropChunk(chunks[0]);
@@ -1091,7 +1171,7 @@ function updateWorld(wdt) {
     // player hit (3 sample points on the capsule)
     if (!dead && b.deflected && boss && boss.alive) {
       const bx = boss.pos.x, bz = boss.pos.z, by = boss.group.position.y;
-      if (segPointDist2(bx, by + 1 * BOSS_SCALE, bz, bx, by + 7.6 * BOSS_SCALE, bz, b.pos.x, b.pos.y, b.pos.z) < (2.4 * BOSS_SCALE) ** 2) { boss.hit('dog', b.pos); dead = true; }
+      if (segPointDist2(bx, by + 1 * BOSS_SCALE, bz, bx, by + 7.6 * BOSS_SCALE, bz, b.pos.x, b.pos.y, b.pos.z) < (2.4 * BOSS_SCALE) ** 2) { boss.hit('dog', b.pos, b.big); dead = true; }
     }
     if (!dead && P.alive && !b.deflected) {
       for (const py of [P.pos.y + 0.45, P.pos.y + 1.0, P.pos.y + P.eye]) {
@@ -1140,6 +1220,7 @@ function tick(dt) {
     const eyeV = tmpB.set(P.pos.x, P.pos.y + P.eye, P.pos.z);
     danger = false; for (const b of bullets) if (!b.deflected && dogInRange(b, eyeV)) { danger = true; break; }
     if (danger) { target = Math.min(target, 0.16); timeScale = Math.min(timeScale, 0.3); }   // snap in, then settle
+    if (hitstop > 0) { hitstop -= dt; target = Math.min(target, 0.06); timeScale = Math.min(timeScale, 0.2); }
     timeScale += (target - timeScale) * Math.min(1, dt * (target > timeScale ? 14 : danger ? 30 : 7));
     distance = Math.max(distance, Math.floor(-P.pos.z));
   } else {
@@ -1148,7 +1229,9 @@ function tick(dt) {
     camera.position.y += ((P.pos.y + 0.35) - camera.position.y) * Math.min(1, dt * 2.5);
   }
   updateWorld(dt * timeScale);
-  updateFist();
+  if (boss) boss.updateReal(dt);
+  if (shake > 0) { shake = Math.max(0, shake - dt * 2.2); camera.position.x += rand(-1, 1) * shake * 0.18; camera.position.y += rand(-1, 1) * shake * 0.18; }
+  updateFist(dt);
   updateGuns(dt);
   updateYells(dt);
   // pulsing rings around every hot dog (real time, so they keep pulsing when time is frozen); red when smackable
