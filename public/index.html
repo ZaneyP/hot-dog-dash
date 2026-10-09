@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.6.2">
+<meta name="version" content="1.6.3">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -65,7 +65,7 @@
   <div id="bossbar" class="hidden"><div class="bn">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.6.2</div>
+  <div id="ver">v1.6.3</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -107,7 +107,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.6.2';
+const VERSION = '1.6.3';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -1103,47 +1103,23 @@ function punch() {
   noise(0.08, 0.08, 1.5); // whiff
 }
 
-// the slapping arm: a big floppy hot dog held out in front from the right shoulder, bun under, sausage on top.
-// It swings around your vertical axis like a forehand slap (right-to-left by default; rapid successive slaps
-// alternate). Segments lag the swing and droop so it flops.
-const ARM_SEGS = 6, ARM_L = 0.3, ARM_SWEEP = 1.35;
+// punching arm (camera-attached): off-screen at rest, a glove + forearm jabs in from the bottom-right on a punch
+const gloveMat = new THREE.MeshLambertMaterial({ color: 0x2b2b2b });
 const fist = new THREE.Group();
-const armSegs = [];
-{
-  let parent = fist;
-  for (let i = 0; i < ARM_SEGS; i++) {
-    const g = new THREE.Group(); g.position.z = i === 0 ? 0 : -ARM_L;
-    const tip = i === ARM_SEGS - 1;
-    const bun = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, ARM_L - 0.08, 3, 10), bunMat); bun.rotation.x = Math.PI / 2; bun.scale.set(1.5, 1, 0.9);
-    const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, ARM_L - 0.02, 3, 10), sausageMat); sausage.rotation.x = Math.PI / 2; sausage.position.y = 0.1;
-    const mustard = new THREE.Mesh(unitBox, mustardMat); mustard.position.y = 0.17; mustard.scale.set(0.03, 0.02, ARM_L - 0.06); mustard.rotation.y = 0.4;
-    const seg = new THREE.Group(); seg.add(bun, sausage, mustard); seg.position.z = -ARM_L / 2;
-    if (tip) seg.scale.set(1.3, 1.2, 1.2);
-    g.add(seg); parent.add(g); armSegs.push(g); parent = g;
-  }
-}
+const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.11, 0.16), gloveMat);
+knuckle.add(new THREE.LineSegments(new THREE.EdgesGeometry(knuckle.geometry), edgeMat));
+const forearm = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.11, 0.3), new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }));
+forearm.add(new THREE.LineSegments(new THREE.EdgesGeometry(forearm.geometry), edgeMat));
+forearm.position.set(0.03, -0.05, 0.22); forearm.rotation.x = -0.2;
+fist.add(knuckle, forearm);
 camera.add(fist);
-let armSwing = -ARM_SWEEP, armVel = 0, armSide = 1, slapFrom = 1, lastSlapEnd = -10;
-// called when a slap starts: continue from whichever side the arm is on, if the last slap just finished
-function startSlap() {
-  if (performance.now() - lastSlapEnd > 700) armSide = 1;
-  slapFrom = armSide; armSide = -armSide;
-}
+function startSlap() {}
 function updateFist(dt) {
-  const t = Math.min(P.punchT / 0.34, 1);
-  const e = t < 1 ? 1 - Math.pow(1 - t, 2.2) : 1;                   // fast out, soft landing
-  const target = -slapFrom * ARM_SWEEP * (1 - 2 * e);                // slapFrom=1: starts pointing right, sweeps to the left
-  const prev = armSwing; armSwing = target; armVel = (armSwing - prev) / Math.max(dt, 1e-3);
-  if (t >= 1 && P.punchT < 0.4) lastSlapEnd = performance.now();
-  fist.visible = P.punchT < 0.45;
-  fist.position.set(0.42, -0.3, -0.2);                               // right shoulder, just outside the frame
-  fist.rotation.set(-0.02, armSwing, 0);                             // yaw swing around your body axis
-  const bend = clamp(-armVel * 0.025, -0.55, 0.55);
-  for (let i = 0; i < ARM_SEGS; i++) {
-    const g = armSegs[i];
-    g.rotation.y = i === 0 ? 0 : bend * (0.4 + i * 0.3);             // trails the swing
-    g.rotation.x = i === 0 ? 0 : -0.035 * i + Math.sin(performance.now() / 160 + i) * 0.03;  // droops toward the tip
-  }
+  const t = Math.min(P.punchT / 0.3, 1);
+  const k = Math.sin(t * Math.PI);                                   // in and back out
+  fist.visible = t < 1;                                              // arm only appears for the jab
+  fist.position.set(0.42 - k * 0.34, -0.42 + k * 0.18, -0.7 - k * 0.5);
+  fist.rotation.set(0.25 + k * 0.15, -0.25 + k * 0.25, k * 0.25);
 }
 
 // ---------- Game state ----------

@@ -10,7 +10,7 @@ time snaps into slow-mo and a click **smacks** it back toward whatever you're lo
 A procedural xylophone track (16-step sequencer, kick/snare/hat, bass) plays throughout; it muffles as time slows
 and speeds up in the boss zone. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
 scale with a synth harmony underneath); one vendor sings at a time, each word lands on a beat of the music, and only
-vendors within ~24 m are audible. Your slapping arm is a big floppy hot dog that whips in from off-screen.
+vendors within ~24 m are audible. Your arm stays off-screen and jabs in from the bottom-right on a punch.
 
 **The Big Wiener** — a ~180 m hot dog standing in the sea at the end of the pier — is visible from the moment you spawn
 and grows as you run (it's exempt from fog and hazed by distance instead). The pier bridges into an arena at its feet
