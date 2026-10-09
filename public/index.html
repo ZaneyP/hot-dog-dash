@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.0.0">
+<meta name="version" content="1.0.1">
 <title>TEMPO</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#e8ebef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -16,6 +16,7 @@
   #tbar { position:absolute; left:50%; bottom:26px; width:180px; height:6px; margin-left:-90px; background:rgba(0,0,0,.12); border-radius:3px; overflow:hidden; }
   #tfill { height:100%; width:100%; background:#d81b2a; transform-origin:left; }
   #tlabel { position:absolute; left:50%; bottom:36px; transform:translateX(-50%); font-size:10px; font-weight:700; letter-spacing:3px; opacity:.55; }
+  #lockHint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:10px; font-weight:700; letter-spacing:2px; opacity:.55; }
   #ver { position:absolute; right:10px; bottom:8px; font-size:11px; opacity:.45; font-weight:600; }
   #vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(216,27,42,0) 55%, rgba(216,27,42,.55) 100%); opacity:0; transition:opacity .15s; }
   #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(232,235,239,.92); cursor:pointer; }
@@ -47,7 +48,8 @@
   <div id="xh"></div>
   <div id="tlabel">TEMPO</div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.0.0</div>
+  <div id="ver">v1.0.1</div>
+  <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">PUNCH</div></div>
 </div>
 <div id="overlay">
@@ -81,7 +83,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -657,10 +659,19 @@ function showCard(id) {
   for (const c of ['startCard', 'deadCard', 'pauseCard']) document.getElementById(c).classList.toggle('hidden', c !== id);
   overlay.classList.remove('hidden');
 }
-let pointerLockOK = false;
+let pointerLockOK = false, lockFailed = false;
+const lockHint = document.getElementById('lockHint');
 function lockPointer() {
   if (isTouch) return;
-  try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  try {
+    const p = canvas.requestPointerLock({ unadjustedMovement: true });
+    if (p && p.catch) p.catch(() => { lockFailed = true; updateLockHint(); });
+  } catch (e) { lockFailed = true; updateLockHint(); }
+}
+function updateLockHint() {
+  // when the browser refuses pointer lock (e.g. iframe without allow="pointer-lock"),
+  // mouse-look still works but the cursor is free; tell the player so
+  lockHint.classList.toggle('hidden', pointerLockOK || !started || paused || isTouch);
 }
 overlay.addEventListener('click', () => {
   initAudio(); if (AC && AC.state === 'suspended') AC.resume();
@@ -668,29 +679,33 @@ overlay.addEventListener('click', () => {
   started = true; paused = false;
   overlay.classList.add('hidden');
   lockPointer();
+  setTimeout(updateLockHint, 300);
 });
 document.addEventListener('pointerlockchange', () => {
   pointerLockOK = document.pointerLockElement === canvas;
-  if (!pointerLockOK && started && P.alive && !isTouch) { paused = true; showCard('pauseCard'); }
+  if (pointerLockOK) lockFailed = false;
+  // losing a lock we had (Esc) opens the pause menu
+  else if (started && P.alive && !isTouch && !lockFailed) { paused = true; showCard('pauseCard'); }
+  updateLockHint();
 });
+document.addEventListener('pointerlockerror', () => { lockFailed = true; updateLockHint(); });
 addEventListener('keydown', e => {
   if (e.code === 'Space') { if (!keys.Space) P.jumpBuf = 0.15; e.preventDefault(); }
   if (e.code === 'KeyM') muted = !muted;
-  if (e.code === 'Escape' && started && P.alive) { paused = true; showCard('pauseCard'); }
+  if (e.code === 'Escape' && started && P.alive) { paused = true; showCard('pauseCard'); updateLockHint(); }
   keys[e.code] = true;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
-let dragging = false;
 canvas.addEventListener('mousedown', e => {
   if (!started || paused) return;
-  if (e.button === 0) { punch(); if (!pointerLockOK) { dragging = true; lockPointer(); } }
+  if (e.button === 0) { punch(); if (!pointerLockOK) lockPointer(); }
 });
-addEventListener('mouseup', () => dragging = false);
+// mouse-look is always live while playing; pointer lock just keeps the cursor captured
 addEventListener('mousemove', e => {
   if (!started || paused) return;
-  if (pointerLockOK || dragging) { mouseDX += e.movementX; mouseDY += e.movementY; }
+  mouseDX += e.movementX; mouseDY += e.movementY;
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
