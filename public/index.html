@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.8.0">
+<meta name="version" content="1.9.0">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -38,9 +38,9 @@
   #overlay.victory { background:radial-gradient(ellipse at center, rgba(20,10,40,.35) 0%, rgba(20,10,40,.78) 100%); }
   #fx { position:absolute; inset:0; pointer-events:none; display:none; }
   #fx.on { display:block; }
-  #overlay #victoryCard { color:#fff; max-width:720px; }
-  #overlay #victoryCard p, #overlay #victoryCard h1 { color:#fff; }
-  #overlay #victoryCard p { opacity:.9; }
+  #overlay .vcard { color:#fff; max-width:720px; }
+  #overlay .vcard p, #overlay .vcard h1, #overlay .vcard .go { color:#fff; }
+  #overlay .vcard p { opacity:.9; }
   .vsub { font-size:14px; letter-spacing:8px; font-weight:800; color:#f2b705; animation:vin .8s ease-out both; }
   .vtitle { font-size:96px !important; letter-spacing:14px !important; text-shadow:0 0 30px rgba(242,183,5,.6), 0 6px 0 rgba(0,0,0,.35); animation:vpop .9s cubic-bezier(.2,1.4,.4,1) both; }
   .vtitle span { color:#d83a1e; } .vtitle em { color:#f2b705; font-style:normal; }
@@ -88,7 +88,7 @@
   <div id="bossbar" class="hidden"><div class="bn" id="bossName">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.8.0</div>
+  <div id="ver">v1.9.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -116,13 +116,14 @@
     <p id="dBest" style="font-weight:800"></p>
     <div class="go">CLICK TO RETRY</div>
   </div>
-  <div class="card hidden" id="winCard">
-    <h2 style="color:#2f6fb5" id="wTitle">LEVEL 1 CLEARED</h2>
-    <p id="wText">The Big Wiener has been returned to sender.</p>
-    <p><span id="wDist">0</span> m of pier &middot; <span id="wKills">0</span> vendors shoved</p>
+  <div class="card hidden vcard" id="winCard">
+    <div class="vsub" id="wBoss">THE BIG WIENER DEFEATED</div>
+    <h1 class="vtitle" style="font-size:72px !important" id="wTitle">PIER 1 CLEARED</h1>
+    <div class="vstats"><div><b id="wDist">0</b><small>METRES RUN</small></div><div><b id="wKills">0</b><small>VENDORS SHOVED</small></div><div><b id="wSmacks">0</b><small>SMACKS</small></div></div>
+    <div class="medals"><span id="wNext">NEXT &middot; PIER 2</span></div>
     <div class="go" id="wGo">CLICK FOR THE NEXT PIER</div>
   </div>
-  <div class="card hidden" id="victoryCard">
+  <div class="card hidden vcard" id="victoryCard">
     <div class="vsub">BOARDWALK CHAMPION</div>
     <h1 class="vtitle">VIC<span>TO</span><em>RY</em></h1>
     <p>Five piers. Five giant wieners. All of them sent home.<br>The boardwalk is yours.</p>
@@ -140,7 +141,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.8.0';
+const VERSION = '1.9.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -698,9 +699,9 @@ const KIND_YELLS = {
 };
 const LEVELS = [
   { name: 'THE BOARDWALK',   len: 560,  dBase: 0,    sky: 0x9fd8ef, fog: 0xbfe6f5, sea: 0x3f9ec4, sun: 0xfff2d0, hemi: [0xdff3ff, 0xd9b27a], boss: 'THE BIG WIENER',        color: 0xb8402a, hp: 6,  scale: 24, throw: [3.2, 4.6], bigSpeed: 42, bpm: 138, vendors: ['hotdog'], gulls: 0 },
-  { name: 'SUNSET PIER',     len: 700,  dBase: 0.25, sky: 0xf6a560, fog: 0xf9c99a, sea: 0x3a7fb0, sun: 0xffd9a0, hemi: [0xffe0b8, 0xc98a5a], boss: 'THE BRATWURST BARON',   color: 0xd9b48a, hp: 7,  scale: 25, throw: [2.9, 4.2], bigSpeed: 44, bpm: 144, vendors: ['icecream', 'icecream', 'hotdog'], gulls: 0.5 },
-  { name: 'NIGHT MARKET',    len: 820,  dBase: 0.45, sky: 0x1b2a55, fog: 0x2d3f78, sea: 0x14305a, sun: 0xaabcff, hemi: [0x8aa0ff, 0x3b2f4a], boss: 'THE KIELBASA KING',     color: 0x7a2e22, hp: 8,  scale: 26, throw: [2.6, 3.8], bigSpeed: 46, bpm: 150, vendors: ['cotton', 'cotton', 'icecream'], gulls: 0.4 },
-  { name: 'STORM PIER',      len: 940,  dBase: 0.65, sky: 0x7d8792, fog: 0x9aa4ad, sea: 0x2f4f5c, sun: 0xd0d8e0, hemi: [0xbfc8d0, 0x55606a], boss: 'THE CHILI DOG CHAMPION', color: 0xc8341e, hp: 9,  scale: 27, throw: [2.3, 3.4], bigSpeed: 48, bpm: 156, vendors: ['ring', 'ring', 'cotton'], gulls: 0.7 },
+  { name: 'SUNSET PIER',     len: 700,  dBase: 0.25, sky: 0xf6a560, fog: 0xf9c99a, sea: 0x3a7fb0, sun: 0xffd9a0, hemi: [0xffe0b8, 0xc98a5a], boss: 'THE SUNDAE SULTAN',     color: 0xf7a8c4, hp: 7,  scale: 25, throw: [2.9, 4.2], bigSpeed: 44, bpm: 144, vendors: ['icecream'], gulls: 0.5, style: 'icecream' },
+  { name: 'NIGHT MARKET',    len: 820,  dBase: 0.45, sky: 0x1b2a55, fog: 0x2d3f78, sea: 0x14305a, sun: 0xaabcff, hemi: [0x8aa0ff, 0x3b2f4a], boss: 'THE FLUFF COLOSSUS',    color: 0xf4a3d8, hp: 8,  scale: 26, throw: [2.6, 3.8], bigSpeed: 46, bpm: 150, vendors: ['cotton'], gulls: 0.4, style: 'cotton' },
+  { name: 'STORM PIER',      len: 940,  dBase: 0.65, sky: 0x7d8792, fog: 0x9aa4ad, sea: 0x2f4f5c, sun: 0xd0d8e0, hemi: [0xbfc8d0, 0x55606a], boss: 'THE RINGMASTER',        color: 0xc8341e, hp: 9,  scale: 27, throw: [2.3, 3.4], bigSpeed: 48, bpm: 156, vendors: ['ring'], gulls: 0.7, style: 'ring' },
   { name: 'THE END OF THE PIER', len: 1100, dBase: 0.85, sky: 0xc77bd8, fog: 0xe3b3ef, sea: 0x4a2f7a, sun: 0xffe6ff, hemi: [0xffd6ff, 0x6a3f8a], boss: 'THE WURST OF ALL',      color: 0x3a1f1a, hp: 11, scale: 32, throw: [2.0, 3.0], bigSpeed: 52, bpm: 164, rage: true, vendors: ['hotdog', 'icecream', 'cotton', 'ring'], gulls: 0.9 },
 ];
 let level = 0, unlocked = 0, totalDist = 0, totalKills = 0, totalSmacks = 0;
@@ -722,6 +723,11 @@ function applyLevel() {
 const bossMats = [];
 function bm(mat) { const m = mat.clone(); m.fog = false; m.userData.src = mat; m.userData.base = m.color.clone(); bossMats.push(m); return m; }
 let boss = null, arenaDone = false, inBossZone = false, bossZoneZ = 0, won = false;
+const STYLE_YELLS = {
+  icecream: { wind: ['TWO SCOOPS OF DOOM!', 'YOU\'LL MELT, RUNNER!', 'CHERRY ON TOP... OF YOU!', 'BRAIN FREEZE INCOMING!'], hurt: ['MY SCOOP!', 'I\'M MELTING!', 'NOT THE CHERRY!'], dead: ['SO... COLD...', 'TELL THE FREEZER... I\'M SORRY...'] },
+  cotton:   { wind: ['FLUFF AND NONSENSE!', 'SUGAR CRASH TIME!', 'TASTE THE CLOUD!', 'SPUN TO PERFECTION!'], hurt: ['MY FLUFF!', 'THAT\'S STICKY!', 'I\'M UNRAVELLING!'], dead: ['I WAS... SO FLUFFY...', 'SPUN... OUT...'] },
+  ring:     { wind: ['STEP RIGHT UP AND LOSE!', 'EVERY THROW\'S A WINNER... FOR ME!', 'RING-A-DING-DEAD!', 'NO REFUNDS ON DOOM!'], hurt: ['MY HAT!', 'THAT\'S NOT HOW THE GAME WORKS!', 'RIGGED!'], dead: ['THE SHOW... IS OVER...', 'LADIES AND GENTLEMEN... GOODBYE...'] },
+};
 const BOSS_YELLS = {
   wind: ['I AM THE WURST!', 'YOU CAN\'T RELISH THIS!', 'COME GET SOME, BUN!', 'FRESH OUT OF MERCY!', 'EAT THE BIG ONE!', 'NOBODY DASHES MY DOGS!'],
   crave: ['KETCHUP ME, COWARD!', 'MUSTARD! NOW!'],
@@ -748,33 +754,65 @@ class Boss {
     this.throwT = 3.5; this.craving = 'ketchup'; this.craveT = 8; this.voice = 0.45; this.yellH = 9.5 * BOSS_SCALE; this.yelled = false; this.t = 0;
     bossMats.length = 0;
     const g = this.group = new THREE.Group(); g.position.copy(this.pos); g.scale.setScalar(BOSS_SCALE); scene.add(g);
-    // sausage body between two bun halves, big face, sneakers, a bottle in each hand (ketchup held over the head)
-    const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(1.35, 5.2, 6, 16), bm(sausageMat)); sausage.position.y = 4.3; sausage.castShadow = true;
+    const style = this.style = L.style || 'hotdog';
+    this.yells = style === 'hotdog' ? BOSS_YELLS : { ...BOSS_YELLS, ...STYLE_YELLS[style] };
+    // face (eyes, brows, cheeks, mouth) at a style-specific height; legs + sneakers under everything
+    const faceY = style === 'icecream' ? 5.0 : style === 'cotton' ? 5.4 : style === 'ring' ? 6.0 : 5.7, faceZ = style === 'cotton' ? 2.3 : style === 'ring' ? 1.05 : 1.2;
     for (const sx of [-1, 1]) {
-      const bun = new THREE.Mesh(new THREE.CapsuleGeometry(1.0, 4.8, 6, 14), bm(bunMat)); bun.position.set(sx * 1.45, 4.0, 0.25); bun.scale.z = 1.4; bun.castShadow = true; g.add(bun);
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), bm(whiteMat)); eye.position.set(sx * 0.55, 5.7, 1.2); g.add(eye);
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), bm(blueMat)); pupil.position.set(sx * 0.55, 5.7, 1.56); g.add(pupil);
-      const brow = new THREE.Mesh(unitBox, bm(darkMat)); brow.position.set(sx * 0.6, 6.25, 1.3); brow.scale.set(0.6, 0.1, 0.1); brow.rotation.z = sx * -0.3; g.add(brow);
-      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), bm(pinkMat)); cheek.position.set(sx * 1.0, 4.9, 1.15); g.add(cheek);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), bm(whiteMat)); eye.position.set(sx * 0.55, faceY, faceZ); g.add(eye);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), bm(blueMat)); pupil.position.set(sx * 0.55, faceY, faceZ + 0.36); g.add(pupil);
+      const brow = new THREE.Mesh(unitBox, bm(darkMat)); brow.position.set(sx * 0.6, faceY + 0.55, faceZ + 0.1); brow.scale.set(0.6, 0.1, 0.1); brow.rotation.z = sx * -0.3; g.add(brow);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), bm(pinkMat)); cheek.position.set(sx * 1.0, faceY - 0.8, faceZ - 0.05); g.add(cheek);
       const leg = new THREE.Mesh(unitBox, bm(darkMat)); leg.position.set(sx * 0.6, 0.75, 0); leg.scale.set(0.5, 1.5, 0.5); g.add(leg);
-      const shoe = new THREE.Mesh(unitBox, bm(whiteMat)); shoe.position.set(sx * 0.6, 0.22, 0.3); shoe.scale.set(0.7, 0.44, 1.3); shoe.castShadow = true; g.add(shoe);
+      const shoe = new THREE.Mesh(unitBox, bm(whiteMat)); shoe.position.set(sx * 0.6, 0.22, 0.3); shoe.scale.set(0.7, 0.44, 1.3); g.add(shoe);
       const toe = new THREE.Mesh(unitBox, bm(metalMat)); toe.position.set(sx * 0.6, 0.22, 0.95); toe.scale.set(0.72, 0.46, 0.1); g.add(toe);
     }
-    const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.09, 8, 16, Math.PI), bm(darkMat)); mouth.position.set(0, 4.75, 1.35); mouth.rotation.z = Math.PI; g.add(mouth);
-    const drip = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), bm(ketchupMat)); drip.position.set(0.1, 7.05, 0.2); drip.scale.y = 0.5; g.add(drip);
-    // arms pivot at the shoulders; right arm throws, left holds ketchup over the head
+    const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.09, 8, 16, Math.PI), bm(darkMat)); mouth.position.set(0, faceY - 0.95, faceZ + 0.15); mouth.rotation.z = Math.PI; g.add(mouth);
+    const armMat = style === 'hotdog' ? sausageMat : style === 'icecream' ? coneMat : style === 'cotton' ? fluffMat : ketchupMat;
+    if (style === 'hotdog') {
+      // sausage body between two bun halves, ketchup dripping on the head
+      const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(1.35, 5.2, 6, 16), bm(sausageMat)); sausage.position.y = 4.3; g.add(sausage);
+      for (const sx of [-1, 1]) { const bun = new THREE.Mesh(new THREE.CapsuleGeometry(1.0, 4.8, 6, 14), bm(bunMat)); bun.position.set(sx * 1.45, 4.0, 0.25); bun.scale.z = 1.4; g.add(bun); }
+      const drip = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), bm(ketchupMat)); drip.position.set(0.1, 7.05, 0.2); drip.scale.y = 0.5; g.add(drip);
+    } else if (style === 'icecream') {
+      // waffle cone with three scoops and a cherry
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3.6, 14), bm(coneMat)); cone.rotation.x = Math.PI; cone.position.y = 3.2; g.add(cone);
+      const sc = [[0, 5.0, 1.75, pinkMat2], [0, 6.4, 1.45, mintMat], [0, 7.5, 1.15, creamMat]];
+      for (const [x, y, r, m] of sc) { const sph = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), bm(m)); sph.position.set(x, y, 0); g.add(sph); }
+      const cherry = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), bm(ketchupMat)); cherry.position.set(0.2, 8.7, 0.1); g.add(cherry);
+      const stem = new THREE.Mesh(cylGeo, bm(darkMat)); stem.scale.set(0.05, 0.7, 0.05); stem.position.set(0.3, 9.1, 0.1); stem.rotation.z = -0.4; g.add(stem);
+      const dripI = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), bm(pinkMat2)); dripI.position.set(1.2, 3.9, 0.9); dripI.scale.y = 1.8; g.add(dripI);
+    } else if (style === 'cotton') {
+      // a huge spun-sugar cloud on a paper stick
+      for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(rand(1.0, 1.7), 10, 8), bm(i % 3 ? fluffMat : fluffMat2)); m.position.set(rand(-1.4, 1.4), 4.4 + rand(-1.4, 1.6), rand(-1.2, 1.2)); g.add(m); }
+      const core = new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), bm(fluffMat)); core.position.y = 4.6; g.add(core);
+      const stick = new THREE.Mesh(cylGeo, bm(creamMat)); stick.scale.set(0.22, 3.2, 0.22); stick.position.y = 1.9; g.add(stick);
+    } else if (style === 'ring') {
+      // the Ringmaster: red tailcoat, white shirt, top hat, moustache
+      const coat = new THREE.Mesh(new THREE.CapsuleGeometry(1.3, 3.6, 6, 16), bm(ketchupMat)); coat.position.y = 3.9; g.add(coat);
+      const shirt = new THREE.Mesh(unitBox, bm(whiteMat)); shirt.position.set(0, 3.9, 1.1); shirt.scale.set(0.9, 2.6, 0.5); g.add(shirt);
+      const bow = new THREE.Mesh(unitBox, bm(darkMat)); bow.position.set(0, 5.1, 1.35); bow.scale.set(0.8, 0.3, 0.2); g.add(bow);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 12), bm(skinMat)); head.position.y = 6.1; g.add(head);
+      const brim = new THREE.Mesh(cylGeo, bm(darkMat)); brim.scale.set(1.7, 0.12, 1.7); brim.position.y = 7.0; g.add(brim);
+      const top = new THREE.Mesh(cylGeo, bm(darkMat)); top.scale.set(1.1, 1.8, 1.1); top.position.y = 7.9; g.add(top);
+      const band = new THREE.Mesh(cylGeo, bm(ketchupMat)); band.scale.set(1.13, 0.3, 1.13); band.position.y = 7.25; g.add(band);
+      const stache = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 8, 16, Math.PI), bm(darkMat)); stache.position.set(0, 5.35, 1.2); g.add(stache);
+    }
+    // arms pivot at the shoulders; right arm throws
     this.armR = new THREE.Group(); this.armR.position.set(2.3, 5.3, 0);
-    const armRm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), bm(sausageMat)); armRm.position.set(0.3, -1.2, 0); armRm.rotation.z = -0.25; this.armR.add(armRm);
-    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), bm(skinMat)); handR.position.set(0.6, -2.4, 0); this.armR.add(handR);
-    this.heldDog = makeHotDog(); this.heldDog.scale.setScalar(5); this.heldDog.position.set(0.6, -2.4, 0.6); this.heldDog.rotation.y = Math.PI / 2; this.armR.add(this.heldDog);
-    const mustard = makeBottle(bm(mustardLMat), 0.9); mustard.scale.setScalar(2.2); mustard.position.set(0.6, -2.4, -0.2); this.armR.add(mustard);
-    this.armL = new THREE.Group(); this.armL.position.set(-2.3, 5.3, 0); this.armL.rotation.z = -2.6;
-    const armLm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), bm(sausageMat)); armLm.position.set(0, -1.2, 0); this.armL.add(armLm);
-    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), bm(skinMat)); handL.position.set(0, -2.4, 0); this.armL.add(handL);
-    const ketchup = makeBottle(bm(ketchupMat), 0.9); ketchup.scale.setScalar(2.2); ketchup.position.set(0, -2.4, 0); ketchup.rotation.z = Math.PI; this.armL.add(ketchup);
-    g.add(sausage, mouth, this.armR, this.armL);
+    const armRm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), bm(armMat)); armRm.position.set(0.3, -1.2, 0); armRm.rotation.z = -0.25; this.armR.add(armRm);
+    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), bm(style === 'ring' ? whiteMat : skinMat)); handR.position.set(0.6, -2.4, 0); this.armR.add(handR);
+    this.bigKind = style === 'hotdog' ? 'hotdog' : style === 'icecream' ? 'scoop' : style;
+    this.heldDog = makeProjectile(this.bigKind); this.heldDog.scale.setScalar(style === 'cotton' ? 2.2 : 5); this.heldDog.position.set(0.6, -2.4, 0.6); this.heldDog.rotation.y = Math.PI / 2; this.armR.add(this.heldDog);
+    if (style === 'hotdog') { const mustard = makeBottle(bm(mustardLMat), 0.9); mustard.scale.setScalar(2.2); mustard.position.set(0.6, -2.4, -0.2); this.armR.add(mustard); }
+    this.armL = new THREE.Group(); this.armL.position.set(-2.3, 5.3, 0); this.armL.rotation.z = style === 'ring' ? -0.9 : -2.6;
+    const armLm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), bm(armMat)); armLm.position.set(0, -1.2, 0); this.armL.add(armLm);
+    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), bm(style === 'ring' ? whiteMat : skinMat)); handL.position.set(0, -2.4, 0); this.armL.add(handL);
+    if (style === 'hotdog') { const ketchup = makeBottle(bm(ketchupMat), 0.9); ketchup.scale.setScalar(2.2); ketchup.position.set(0, -2.4, 0); ketchup.rotation.z = Math.PI; this.armL.add(ketchup); }
+    if (style === 'ring') { const cane = new THREE.Mesh(cylGeo, bm(darkMat)); cane.scale.set(0.08, 3.4, 0.08); cane.position.set(0, -3.2, 0); this.armL.add(cane); }
+    g.add(mouth, this.armR, this.armL);
     g.traverse(o => { o.castShadow = false; });
-    for (const m of bossMats) if (m.userData.src === sausageMat) { m.color.set(L.color); m.userData.base = m.color.clone(); }
+    if (style === 'hotdog') for (const m of bossMats) if (m.userData.src === sausageMat) { m.color.set(L.color); m.userData.base = m.color.clone(); }
     if (L.rage) { this.enraged = true; }
     this.handWorld = new THREE.Vector3();
   }
@@ -792,7 +830,7 @@ class Boss {
     this.throwT -= wdt; if (this.doubleT > 0) this.doubleT -= wdt;
     const wind = clamp(1.2 - this.throwT, 0, 1);
     this.armR.rotation.x = -wind * 2.2;
-    if (this.throwT < 1.2 && !this.yelled) { this.yelled = true; yell(this, 'wind', BOSS_YELLS); SFX.bossRoar(); }
+    if (this.throwT < 1.2 && !this.yelled) { this.yelled = true; yell(this, 'wind', this.yells); SFX.bossRoar(); }
     if (this.throwT <= 0 || (this.doubleT < 0 && this.doubleT > -1)) {
       if (this.throwT <= 0) { this.yelled = false; const [a, b] = this.cfg.throw; this.throwT = this.enraged ? rand(a * 0.7, b * 0.7) : rand(a, b); if (this.enraged) this.doubleT = 0.7; }
       if (this.doubleT < 0) this.doubleT = -5;                     // the enraged second throw fires once
@@ -803,8 +841,10 @@ class Boss {
     this.heldDog.getWorldPosition(this.handWorld);
     const lead = (dist / 42) * 0.45;
     const target = tmpC.set(eye.x + P.vel.x * lead, eye.y - 0.3, eye.z + P.vel.z * lead);
-    const v = this.cfg.bigSpeed;
-    spawnBullet(this.handWorld, throwDir(this.handWorld, target, v), this, { speed: v, scale: 14, r: 2.2, big: true });
+    const v = this.cfg.bigSpeed, k = this.bigKind;
+    const opts = k === 'cotton' ? { speed: v * 0.8, scale: 5, r: 2.6, big: true, kind: k, grav: 0.2, life: 12 } : k === 'ring' ? { speed: v, scale: 7, r: 2.4, big: true, kind: k, grav: 0, homing: 0.35, life: 9 } : { speed: v, scale: 14, r: 2.2, big: true, kind: k, grav: 1 };
+    const g = opts.grav > 0 ? BULLET_G * opts.grav : 0;
+    spawnBullet(this.handWorld, g > 0 ? throwDir(this.handWorld, target, opts.speed, g) : target.clone().sub(this.handWorld).normalize(), this, opts);
     SFX.shot(timeScale);
   }
   // real-time animation (runs even when world time is frozen): stagger recoil, death collapse
@@ -828,15 +868,15 @@ class Boss {
     this.hp -= 1; this.stagger = 1; shake = 1.2; hitstop = 0.5;
     spawnFrags(point.x, point.y, point.z, 46, 3.2);
     SFX.bossRoar(); SFX.splat(); SFX.smack();
-    yell(this, 'hurt', BOSS_YELLS);
+    yell(this, 'hurt', this.yells);
     updateBossBar(); flashBossBar();
-    if (!this.enraged && this.hp <= Math.ceil(this.maxHp / 2) && this.hp > 0) { this.enraged = true; banner('ENRAGED', 'HE THROWS TWICE NOW'); setTimeout(() => yell(this, 'rage', BOSS_YELLS), 900); }
+    if (!this.enraged && this.hp <= Math.ceil(this.maxHp / 2) && this.hp > 0) { this.enraged = true; banner('ENRAGED', 'HE THROWS TWICE NOW'); setTimeout(() => yell(this, 'rage', this.yells), 900); }
     if (this.hp <= 0) this.die();
   }
   die() {
     this.alive = false; won = true; this.dying = 0.001; shake = 1;
     for (const b of bullets.splice(0)) removeBullet(b);
-    yell(this, 'dead', BOSS_YELLS); SFX.bossRoar(); SFX.death();
+    yell(this, 'dead', this.yells); SFX.bossRoar(); SFX.death();
     banner('TIMBER', 'THE BIG WIENER FALLS');
     if (distance > best) { best = distance; try { localStorage.setItem('hotdog_best', best); } catch (e) {} }
     totalDist += distance; totalKills += kills; totalSmacks += smacks;
@@ -851,10 +891,11 @@ function levelCleared() {
     document.getElementById('vDist').textContent = totalDist; document.getElementById('vKills').textContent = totalKills; document.getElementById('vSmacks').textContent = totalSmacks;
     showCard('victoryCard'); confetti(); document.getElementById('overlay').classList.add('victory'); fireworksStart(); victoryPan = true;
   } else {
-    document.getElementById('wTitle').textContent = 'LEVEL ' + (level + 1) + ' CLEARED';
-    document.getElementById('wText').textContent = LEVELS[level].boss.replace(/^THE /, 'The ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) + ' has been returned to sender. Next: ' + LEVELS[level + 1].name + '.';
-    document.getElementById('wDist').textContent = distance; document.getElementById('wKills').textContent = kills;
-    showCard('winCard');
+    document.getElementById('wTitle').textContent = 'PIER ' + (level + 1) + ' CLEARED';
+    document.getElementById('wBoss').textContent = LEVELS[level].boss + ' DEFEATED';
+    document.getElementById('wNext').innerHTML = 'NEXT &middot; PIER ' + (level + 2) + ' &middot; ' + LEVELS[level + 1].name;
+    document.getElementById('wDist').textContent = distance; document.getElementById('wKills').textContent = kills; document.getElementById('wSmacks').textContent = smacks;
+    showCard('winCard'); confetti(); document.getElementById('overlay').classList.add('victory'); fireworksStart(); victoryPan = true;
   }
 }
 // fireworks on a 2D canvas over the scene during the victory screen
@@ -1299,7 +1340,7 @@ function die() {
 function updateWorld(wdt) {
   // chunks
   while (!arenaDone && chunks.length && chunks[chunks.length - 1].zEnd > P.pos.z - 130) genChunk();
-  if (!inBossZone && arenaDone && P.pos.z < bossZoneZ) { inBossZone = true; banner('THE BIG WIENER', 'WAIT FOR THE GIANT HOT DOG &middot; TIME SLOWS WHEN IT\'S CLOSE &middot; CLICK TO SMACK IT BACK AT HIM'); document.getElementById('bossbar').classList.remove('hidden'); updateBossBar(); if (boss) yell(boss, 'wind', BOSS_YELLS); }
+  if (!inBossZone && arenaDone && P.pos.z < bossZoneZ) { inBossZone = true; banner(LEVELS[level].boss, 'WAIT FOR THE GIANT THROW &middot; TIME SLOWS WHEN IT\'S CLOSE &middot; CLICK TO SMACK IT BACK'); document.getElementById('bossbar').classList.remove('hidden'); updateBossBar(); if (boss) yell(boss, 'wind', boss.yells); }
   if (boss) boss.update(wdt);
   updateShots(wdt);
   while (chunks.length > 2 && chunks[0].zEnd > P.pos.z + 45) dropChunk(chunks[0]);
@@ -1453,7 +1494,7 @@ document.addEventListener('pointerlockchange', () => {
   pointerLockOK = document.pointerLockElement === canvas;
   if (pointerLockOK) lockFailed = false;
   // losing a lock we had (Esc) opens the pause menu
-  else if (started && P.alive && !isTouch && !lockFailed) { paused = true; showCard('pauseCard'); }
+  else if (started && P.alive && !won && !isTouch && !lockFailed) { paused = true; showCard('pauseCard'); }
   updateLockHint();
 });
 document.addEventListener('pointerlockerror', () => { lockFailed = true; updateLockHint(); });
@@ -1463,7 +1504,7 @@ addEventListener('keydown', e => {
   if (!overlay.classList.contains('hidden') && e.code.startsWith('Digit')) { const n = +e.code.slice(5) - 1; if (n >= 0 && n <= unlocked && n < LEVELS.length && n !== level) { level = n; totalDist = totalKills = totalSmacks = 0; resetGame(); } }
   if (e.code === 'KeyQ') fireGun('ketchup');
   if (e.code === 'KeyE') fireGun('mustard');
-  if (e.code === 'Escape' && started && P.alive) { paused = true; showCard('pauseCard'); updateLockHint(); }
+  if (e.code === 'Escape' && started && P.alive && !won) { paused = true; showCard('pauseCard'); updateLockHint(); }
   keys[e.code] = true;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 });

@@ -26,16 +26,17 @@ Five piers, each longer and meaner, with its own sky and its own giant at the en
 | # | Pier | Length | Boss | HP |
 | --- | --- | --- | --- | --- |
 | 1 | The Boardwalk | 560 m | The Big Wiener | 6 |
-| 2 | Sunset Pier | 700 m | The Bratwurst Baron | 7 |
-| 3 | Night Market | 820 m | The Kielbasa King | 8 |
-| 4 | Storm Pier | 940 m | The Chili Dog Champion | 9 |
+| 2 | Sunset Pier (ice cream) | 700 m | The Sundae Sultan — a giant cone that lobs giant scoops | 7 |
+| 3 | Night Market (cotton candy) | 820 m | The Fluff Colossus — a spun-sugar cloud that lobs slow floating clouds | 8 |
+| 4 | Storm Pier (ring toss) | 940 m | The Ringmaster — top hat and cane, throws giant homing rings | 9 |
 | 5 | The End of the Pier | 1100 m | The Wurst of All (enraged from the start) | 11 |
 
-Each pier has its own vendors from around the boardwalk: hot dog vendors (pier 1), ice cream vendors whose cones
-split into three scoops at the top of the arc (pier 2), cotton candy carnies lobbing huge slow floating clouds
-(pier 3), ring-toss carnies throwing rings that home in on you (pier 4), and everything at once on pier 5. From
+Each pier is themed top to bottom: hot dog vendors (pier 1); ice cream vendors whose cones split into three scoops
+at the top of the arc (pier 2); cotton candy carnies lobbing huge slow floating clouds (pier 3); ring-toss carnies
+throwing rings that home in on you (pier 4); and everything at once on pier 5. Each pier's giant boss matches its
+theme and throws its own giant version of that projectile — all of it smackable back at them. From
 pier 2 on, seagulls perch above the pier and dive-bomb you when you get close. All of it is smackable.
-Vendors start harder on later piers and the music tempo climbs. Clearing a pier unlocks the next (saved in
+Vendors start harder on later piers and the music tempo climbs. Clearing a pier brings up a PIER CLEARED celebration (fireworks, confetti, fanfare, stats, next pier) and unlocks the next (saved in
 `localStorage`); press 1–5 on any menu to jump to an unlocked level. Beating all five brings up the VICTORY screen: fireworks, confetti, a
 xylophone fanfare, your medals and campaign totals, with the camera slowly panning the arena.
 
