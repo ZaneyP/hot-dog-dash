@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.1.0">
+<meta name="version" content="1.2.0">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -17,6 +17,8 @@
   #tfill { height:100%; width:100%; background:linear-gradient(90deg,#f2b705,#d83a1e); transform-origin:left; }
   #tlabel { position:absolute; left:50%; bottom:36px; transform:translateX(-50%); font-size:10px; font-weight:700; letter-spacing:3px; opacity:.55; }
   #lockHint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:10px; font-weight:700; letter-spacing:2px; opacity:.55; }
+  .yell { position:absolute; transform:translate(-50%,-100%); background:#fffdf7; color:#2a1a0e; border:2px solid #2a1a0e; border-radius:12px; padding:3px 9px; font-weight:900; font-size:13px; letter-spacing:.5px; white-space:nowrap; pointer-events:none; text-shadow:none; box-shadow:0 2px 0 rgba(0,0,0,.25); }
+  .yell::after { content:''; position:absolute; left:50%; bottom:-7px; width:8px; height:8px; margin-left:-4px; background:#fffdf7; border-right:2px solid #2a1a0e; border-bottom:2px solid #2a1a0e; transform:rotate(45deg); }
   #ver { position:absolute; right:10px; bottom:8px; font-size:11px; opacity:.45; font-weight:600; }
   #vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(242,183,5,0) 50%, rgba(216,58,30,.6) 100%); opacity:0; transition:opacity .15s; }
   #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:repeating-linear-gradient(90deg, rgba(255,250,240,.94) 0 40px, rgba(255,214,214,.94) 40px 80px); cursor:pointer; }
@@ -49,7 +51,7 @@
   <div id="xh"></div>
   <div id="tlabel">BOARDWALK TIME</div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.1.0</div>
+  <div id="ver">v1.2.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div></div>
 </div>
@@ -84,7 +86,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -377,6 +379,7 @@ class Agent {
     this.pos = new THREE.Vector3(x, y, z);
     this.alive = true; this.d = d;
     this.aim = 0; this.aimTime = clamp(2.4 - d * 1.2, 1.1, 2.4) * rand(0.85, 1.15);
+    this.yelled = false; this.voice = rand(0.6, 1.5);
     this.group = new THREE.Group(); this.group.position.copy(this.pos);
     // vendor: striped shirt body, white apron, paper hat, throwing arm; stands behind a cart with an umbrella
     const body = new THREE.Mesh(capGeo, striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), 'float hs = step(0.5, fract(vWP.y * 6.0)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), hs);')); body.position.y = 0.85; body.castShadow = true;
@@ -411,6 +414,8 @@ class Agent {
     if (los) { const a = [g.x, g.y, g.z], b = [eye.x, eye.y, eye.z]; for (const bx of boxes) if (segHitsBox(a, b, bx)) { los = false; break; } }
     if (los) this.aim += wdt; else this.aim = Math.max(0, this.aim - wdt * 2);
     const t = this.aim / this.aimTime;
+    if (t > 0.55 && !this.yelled) { this.yelled = true; yell(this, 'wind'); }
+    if (t < 0.2) this.yelled = false;
     this.tel.material.opacity = t > 0.55 ? (t - 0.55) / 0.45 * 0.8 : 0;
     if (this.tel.material.opacity > 0) {
       const pa = this.tel.geometry.attributes.position;
@@ -421,29 +426,37 @@ class Agent {
       this.aim = 0; this.aimTime *= rand(0.9, 1.1);
       // partial target leading at higher difficulty
       const lead = (dist / BULLET_SPEED) * this.d * 0.7;
-      const target = tmpC.set(eye.x + P.vel.x * lead, eye.y + P.vel.y * lead * 0.3, eye.z + P.vel.z * lead);
-      const dir = target.sub(g).normalize();
-      const spread = 0.05 * (1 - this.d * 0.6);
+      const target = tmpC.set(eye.x + P.vel.x * lead, eye.y - 0.4 + P.vel.y * lead * 0.3, eye.z + P.vel.z * lead);
+      const dir = throwDir(g, target);
+      const spread = 0.04 * (1 - this.d * 0.6);
       dir.x += rand(-spread, spread); dir.y += rand(-spread, spread) * 0.5; dir.z += rand(-spread, spread); dir.normalize();
       spawnBullet(g, dir, this);
       SFX.shot(timeScale);
     }
   }
-  kill() {
+  kill(cause = 'shoved') {
     if (!this.alive) return;
     this.alive = false; this.group.visible = false; this.tel.visible = false;
     spawnFrags(this.pos.x, this.pos.y + 0.9, this.pos.z);
-    kills++; SFX.punch();
+    kills++; SFX.punch(); yell(this, cause);
   }
   dispose() { scene.remove(this.tel); this.tel.geometry.dispose(); }
 }
 
 // ---------- Bullets & fragments ----------
-const BULLET_SPEED = 30;
+const BULLET_SPEED = 26, BULLET_G = 11;
+// launch direction so a hot dog thrown at BULLET_SPEED under BULLET_G lands on the target (low arc); falls back to a lob
+function throwDir(from, to) {
+  const dx = to.x - from.x, dz = to.z - from.z, D = Math.hypot(dx, dz), H = to.y - from.y;
+  const v2 = BULLET_SPEED * BULLET_SPEED;
+  const disc = v2 * v2 - BULLET_G * (BULLET_G * D * D + 2 * H * v2);
+  const theta = disc >= 0 ? Math.atan((v2 - Math.sqrt(disc)) / (BULLET_G * D)) : Math.PI / 4;
+  return new THREE.Vector3(dx / D * Math.cos(theta), Math.sin(theta), dz / D * Math.cos(theta));
+}
 const bunGeo = new THREE.CapsuleGeometry(0.1, 0.34, 3, 8);
 const sausageGeo = new THREE.CapsuleGeometry(0.06, 0.42, 3, 8);
 const trailGeo = new THREE.BoxGeometry(0.05, 0.05, 1);
-const trailMat = new THREE.MeshBasicMaterial({ color: 0xf2b705, transparent: true, opacity: 0.3 });
+const trailMat = new THREE.MeshBasicMaterial({ color: 0xf2b705, transparent: true, opacity: 0.18 });
 function makeHotDog() {
   const g = new THREE.Group();
   const bun = new THREE.Mesh(bunGeo, bunMat); bun.rotation.x = Math.PI / 2;
@@ -472,6 +485,52 @@ function spawnFrags(x, y, z) {
   }
 }
 
+// ---------- Vendor yelling ----------
+const YELLS = {
+  wind: ['HEY! YOU!', 'GET BACK HERE!', 'YOU DIDN\'T PAY!', 'EAT THIS!', 'NO RUNNING ON THE PIER!', 'EXTRA MUSTARD!', 'COME BACK, PAL!', 'HOT DOG INCOMING!', 'FREE SAMPLE!', 'THAT\'S MY DOG!', 'ORDER UP!', 'YOU WANT RELISH WITH THAT?'],
+  shoved: ['MY CART!', 'OOF!', 'NOT THE BUNS!', 'I QUIT!', 'MY UMBRELLA!', 'TELL MY WIFE I LOVE HER!'],
+  ff: ['WATCH IT, FRANK!', 'HEY! THAT WAS MINE!', 'MUSTARD IN MY EYE!', 'WRONG GUY, SAL!'],
+};
+const yells = [];
+const hudEl = document.getElementById('hud');
+function yell(agent, kind) {
+  const line = pick(YELLS[kind]);
+  const el = document.createElement('div'); el.className = 'yell'; el.textContent = line; hudEl.appendChild(el);
+  yells.push({ el, x: agent.pos.x, y: agent.pos.y + 2.5, z: agent.pos.z, t: 0 });
+  if (yells.length > 8) yells.shift().el.remove();
+  sing(line, agent.voice);
+}
+// "autotune": every word is its own utterance pinned to a note of a pentatonic scale, so the vendors sing their abuse
+const SCALE = [0, 2, 4, 7, 9, 12];
+let singingUntil = 0;
+function sing(line, voice) {
+  if (muted || !('speechSynthesis' in window) || performance.now() < singingUntil) return;
+  const words = line.replace(/[!?,]/g, '').split(' ');
+  let note = Math.floor(rand(0, SCALE.length));
+  const rate = clamp(0.6 + timeScale * 0.8, 0.6, 1.4);
+  singingUntil = performance.now() + words.length * 420 / rate + 300;
+  for (const w of words) {
+    note = clamp(note + Math.round(rand(-2, 2)), 0, SCALE.length - 1);
+    const u = new SpeechSynthesisUtterance(w);
+    u.pitch = clamp(voice * Math.pow(2, SCALE[note] / 12), 0.1, 2);
+    u.rate = rate; u.volume = 0.9;
+    speechSynthesis.speak(u);
+  }
+}
+function updateYells(dt) {
+  for (let i = yells.length - 1; i >= 0; i--) {
+    const y = yells[i]; y.t += dt;
+    if (y.t > 1.8) { y.el.remove(); yells.splice(i, 1); continue; }
+    tmpD.set(y.x, y.y, y.z).project(camera);
+    const onScreen = tmpD.z < 1 && Math.abs(tmpD.x) < 1.2 && Math.abs(tmpD.y) < 1.2;
+    y.el.style.display = onScreen ? 'block' : 'none';
+    if (!onScreen) continue;
+    y.el.style.left = ((tmpD.x + 1) / 2 * innerWidth) + 'px';
+    y.el.style.top = ((1 - tmpD.y) / 2 * innerHeight - Math.min(y.t * 10, 8)) + 'px';
+    y.el.style.opacity = y.t < 1.3 ? 1 : (1.8 - y.t) / 0.5;
+  }
+}
+
 // ---------- Player ----------
 const RUN = 8, G = 26, JUMP = 9, AIR_ACCEL = 22, HX = 0.35, PH = 1.7, STEP = 0.55;
 const P = {
@@ -484,6 +543,8 @@ let mouseDX = 0, mouseDY = 0, lookSpeed = 0;
 let touchMove = { x: 0, y: 0 };
 
 function resetGame() {
+  for (const y of yells.splice(0)) y.el.remove();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
   for (const ch of [...chunks]) dropChunk(ch);
   for (const b of bullets) removeBullet(b); bullets = [];
   for (const f of frags) scene.remove(f.mesh); frags = [];
@@ -674,7 +735,7 @@ function updateWorld(wdt) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     const ox = b.pos.x, oy = b.pos.y, oz = b.pos.z;
-    b.pos.addScaledVector(b.vel, wdt); b.life -= wdt;
+    b.vel.y -= BULLET_G * wdt; b.pos.addScaledVector(b.vel, wdt); b.life -= wdt;
     let dead = b.life <= 0 || b.pos.y < -30;
     // player hit (3 sample points on the capsule)
     if (!dead && P.alive) {
@@ -685,13 +746,14 @@ function updateWorld(wdt) {
     // friendly fire
     if (!dead) for (const a of agents) {
       if (!a.alive || a === b.owner) continue;
-      if (segPointDist2(ox, oy, oz, b.pos.x, b.pos.y, b.pos.z, a.pos.x, a.pos.y + 0.9, a.pos.z) < 0.55 * 0.55) { a.kill(); dead = true; break; }
+      if (segPointDist2(ox, oy, oz, b.pos.x, b.pos.y, b.pos.z, a.pos.x, a.pos.y + 0.9, a.pos.z) < 0.55 * 0.55) { a.kill('ff'); dead = true; break; }
     }
     if (!dead) for (const bx of boxes) if (pointInBox(b.pos.x, b.pos.y, b.pos.z, bx)) { dead = true; break; }
     if (dead) { removeBullet(b); bullets.splice(i, 1); continue; }
     b.mesh.position.copy(b.pos); b.mesh.rotateX(wdt * 12);   // end-over-end tumbling hot dog
-    const tl = Math.min(b.life > 4.6 ? (5 - b.life) * BULLET_SPEED : 10, 10);
-    b.trail.scale.z = tl; b.trail.position.copy(b.pos).addScaledVector(b.vel, -tl / 2 / BULLET_SPEED); b.trail.quaternion.copy(b.mesh.quaternion);
+    // short trail aligned to the flight path (not to the tumbling hot dog)
+    const sp = b.vel.length(), tl = Math.min((5 - b.life) * sp, 2.5);
+    b.trail.scale.z = Math.max(tl, 0.01); b.trail.position.copy(b.pos).addScaledVector(b.vel, -tl / 2 / sp); b.trail.lookAt(tmpD.copy(b.pos).add(b.vel));
   }
   for (const w of wheels) w.hub.rotation.z += wdt * 0.25;
   // fragments
@@ -724,6 +786,7 @@ function frame(now) {
   }
   updateWorld(dt * timeScale);
   updateFist();
+  updateYells(dt);
 
   sun.position.set(P.pos.x + 30, P.pos.y + 55, P.pos.z + 25); sun.target.position.copy(P.pos);
   distEl.textContent = distance; killsEl.textContent = kills;
