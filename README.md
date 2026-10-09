@@ -8,8 +8,9 @@ Run, jump, slide, mantle and wall-run down the endless pier; dodge the dogs, sho
 or let them pelt each other. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
 scale with a synth harmony underneath); only vendors within ~24 m are audible.
 
-At the end of the pier (chunk 22, roughly 550 m) is the arena and **The Big Wiener**: a giant hot dog who lobs
-giant hot dogs. In the arena you get a ketchup gun (left click / Q) and a mustard gun (right click / E). The boss
+**The Big Wiener** — a ~180 m hot dog standing in the sea at the end of the pier — is visible from the moment you spawn
+and grows as you run (it's exempt from fog and hazed by distance instead). The pier bridges into an arena at its feet
+(560 m); there it winds up and lobs giant hot dogs down at you. In the arena you get a ketchup gun (left click / Q) and a mustard gun (right click / E). The boss
 alternates which condiment it "wants" (shown under its HP bar); matching hits do 3 damage, the other does 1.
 Condiments also knock hot dogs — even the giant ones — out of the air. Beat it for the win screen.
 

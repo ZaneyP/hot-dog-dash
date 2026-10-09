@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.3.0">
+<meta name="version" content="1.4.0">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -62,7 +62,7 @@
   <div id="bossbar" class="hidden"><div class="bn">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.3.0</div>
+  <div id="ver">v1.4.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -104,7 +104,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -116,7 +116,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd8ef);
 scene.fog = new THREE.Fog(0xbfe6f5, 45, 170);
-const camera = new THREE.PerspectiveCamera(82, 1, 0.1, 400);
+const camera = new THREE.PerspectiveCamera(82, 1, 0.1, 1500);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
 
@@ -267,7 +267,8 @@ function genChunk() {
   scene.add(ch.group);
   const spots = [];
   const c = cursor;
-  let type = i === 0 ? 'start' : i === BOSS_CHUNK ? 'arena' : i < 3 ? 'flat' : pick(['flat', 'flat', 'pillars', 'stairs', 'wallgap', 'corridor']);
+  let type = i === 0 ? 'start' : i < 3 ? 'flat' : pick(['flat', 'flat', 'pillars', 'stairs', 'wallgap', 'corridor']);
+  if (i > 0 && !arenaDone) { if (ch.bridgeNext || c.z <= ARENA_Z + 2) type = 'arena'; else if (c.z - 40 <= ARENA_Z) type = 'bridge'; }
   const nAgents = () => 1 + (Math.random() < d * 1.4 ? 1 : 0) + (Math.random() < d * 0.8 ? 1 : 0);
 
   if (type === 'start') {
@@ -317,13 +318,23 @@ function genChunk() {
     const na = Math.max(1, nAgents() - 1);
     for (let k = 0; k < na; k++) spots.push([c.x + rand(-3, 3), c.y, c.z - rand(len * 0.5, len * 0.9)]);
     c.z -= len;
+  } else if (type === 'bridge') {
+    // last stretch: a wide plank road that steers the pier back to x=0 and ends right at the arena
+    const len = Math.max(6, c.z - (ARENA_Z + 3));
+    addBox(ch, c.x / 2, c.y - 1, c.z, Math.abs(c.x) + 12, 1, len);
+    const na = nAgents();
+    for (let k = 0; k < na; k++) spots.push([rand(-3, 3), c.y, c.z - rand(len * 0.3, len * 0.8)]);
+    c.z = ARENA_Z; c.x = 0;
+    ch.bridge = true;
   } else if (type === 'arena') {
-    // the end of the pier: a wide stage with a few barrels for cover, two vendors, and the Big Wiener at the far end
-    addBox(ch, c.x, c.y - 1, c.z, 38, 1, 56);
-    for (let k = 0; k < 7; k++) addBox(ch, c.x + rand(-15, 15), c.y, c.z - rand(8, 34), 1.5, rand(1, 1.7), 1.5, crateMat);
-    for (const sx of [-1, 1]) { addBox(ch, c.x + sx * 17, c.y, c.z - 1, 4, 3, 54, wallMat); }          // side tents keep you on stage
-    spots.push([c.x - 10, c.y, c.z - 24], [c.x + 10, c.y, c.z - 24]);
-    boss = new Boss(c.x, c.y, c.z - 46);
+    // the end of the pier: a wide stage at y=0 (the boss's feet), barrels for cover, two vendors
+    c.x = 0; c.z = ARENA_Z;
+    const bottom = Math.min(c.y, 0) - 1;
+    addBox(ch, 0, bottom, c.z, 38, 0 - bottom, 56);
+    c.y = 0;
+    for (let k = 0; k < 7; k++) addBox(ch, rand(-15, 15), 0, c.z - rand(8, 34), 1.5, rand(1, 1.7), 1.5, crateMat);
+    for (const sx of [-1, 1]) { addBox(ch, sx * 17, 0, c.z - 1, 4, 3, 54, wallMat); }          // side tents keep you on stage
+    spots.push([-10, 0, c.z - 24], [10, 0, c.z - 24]);
     bossZoneZ = c.z - 3; arenaDone = true;
     c.z -= 56;
   } else if (type === 'corridor') {
@@ -338,12 +349,16 @@ function genChunk() {
     c.z -= len;
   }
 
-  // transition gap + drift
-  const gap = rand(2.5, 4.5) + d * 1.2;
-  const maxUp = 1.2 - (gap - 2.5) * 0.3;
-  c.z -= gap;
-  c.x += rand(-2.5, 2.5);
-  c.y = clamp(c.y + (Math.random() < 0.5 ? -rand(1, 3) : rand(0, maxUp)), -5, 9);
+  // transition gap + drift (the bridge lands exactly on the arena; the approach drifts back toward y=0)
+  if (type !== 'bridge' && type !== 'arena') {
+    const gap = rand(2.5, 4.5) + d * 1.2;
+    const maxUp = 1.2 - (gap - 2.5) * 0.3;
+    c.z -= gap;
+    c.x += rand(-2.5, 2.5);
+    const near = c.z < ARENA_Z + 160;
+    const dy = Math.random() < (near ? (c.y > 0 ? 0.8 : 0.2) : 0.5) ? -rand(1, 3) : rand(0, maxUp);
+    c.y = near ? clamp(c.y + dy, -1.5, 3) : clamp(c.y + dy, -5, 9);
+  }
 
   // carnival decoration along the shore (non-colliding)
   for (let k = 0; k < 3; k++) {
@@ -519,7 +534,9 @@ function spawnFrags(x, y, z, n = 12, sc = 1) {
 }
 
 // ---------- The Big Wiener (final boss) ----------
-const BOSS_CHUNK = 22;                 // arena is generated as this chunk; nothing is generated past it
+const ARENA_Z = -560, BOSS_Z = ARENA_Z - 56 - 80, BOSS_SCALE = 24, BOSS_Y = -30;   // a ~180 m Big Wiener stands in the sea beyond the pier's end, visible from spawn
+const bossMats = [];
+function bm(mat) { const m = mat.clone(); m.fog = false; m.userData.base = m.color.clone(); bossMats.push(m); return m; }
 let boss = null, arenaDone = false, inBossZone = false, bossZoneZ = 0, won = false;
 const BOSS_YELLS = {
   wind: ['I AM THE WURST!', 'YOU CAN\'T RELISH THIS!', 'COME GET SOME, BUN!', 'FRESH OUT OF MERCY!', 'EAT THE BIG ONE!', 'NOBODY DASHES MY DOGS!'],
@@ -540,35 +557,36 @@ function makeBottle(mat, h = 0.26) {
 }
 class Boss {
   constructor(x, y, z) {
-    this.pos = new THREE.Vector3(x, y, z); this.hp = 60; this.maxHp = 60; this.alive = true;
-    this.throwT = 3.5; this.craving = 'ketchup'; this.craveT = 8; this.voice = 0.45; this.yellH = 9.5; this.yelled = false; this.t = 0;
-    this.splats = [];
-    const g = this.group = new THREE.Group(); g.position.copy(this.pos); scene.add(g);
+    this.pos = new THREE.Vector3(x, y, z); this.hp = 75; this.maxHp = 75; this.alive = true;
+    this.throwT = 3.5; this.craving = 'ketchup'; this.craveT = 8; this.voice = 0.45; this.yellH = 9.5 * BOSS_SCALE; this.yelled = false; this.t = 0;
+    this.splats = []; bossMats.length = 0;
+    const g = this.group = new THREE.Group(); g.position.copy(this.pos); g.scale.setScalar(BOSS_SCALE); scene.add(g);
     // sausage body between two bun halves, big face, sneakers, a bottle in each hand (ketchup held over the head)
-    const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(1.35, 5.2, 6, 16), sausageMat); sausage.position.y = 4.3; sausage.castShadow = true;
+    const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(1.35, 5.2, 6, 16), bm(sausageMat)); sausage.position.y = 4.3; sausage.castShadow = true;
     for (const sx of [-1, 1]) {
-      const bun = new THREE.Mesh(new THREE.CapsuleGeometry(1.0, 4.8, 6, 14), bunMat); bun.position.set(sx * 1.45, 4.0, 0.25); bun.scale.z = 1.4; bun.castShadow = true; g.add(bun);
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), whiteMat); eye.position.set(sx * 0.55, 5.7, 1.2); g.add(eye);
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), blueMat); pupil.position.set(sx * 0.55, 5.7, 1.56); g.add(pupil);
-      const brow = new THREE.Mesh(unitBox, darkMat); brow.position.set(sx * 0.6, 6.25, 1.3); brow.scale.set(0.6, 0.1, 0.1); brow.rotation.z = sx * -0.3; g.add(brow);
-      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), pinkMat); cheek.position.set(sx * 1.0, 4.9, 1.15); g.add(cheek);
-      const leg = new THREE.Mesh(unitBox, darkMat); leg.position.set(sx * 0.6, 0.75, 0); leg.scale.set(0.5, 1.5, 0.5); g.add(leg);
-      const shoe = new THREE.Mesh(unitBox, whiteMat); shoe.position.set(sx * 0.6, 0.22, 0.3); shoe.scale.set(0.7, 0.44, 1.3); shoe.castShadow = true; g.add(shoe);
-      const toe = new THREE.Mesh(unitBox, metalMat); toe.position.set(sx * 0.6, 0.22, 0.95); toe.scale.set(0.72, 0.46, 0.1); g.add(toe);
+      const bun = new THREE.Mesh(new THREE.CapsuleGeometry(1.0, 4.8, 6, 14), bm(bunMat)); bun.position.set(sx * 1.45, 4.0, 0.25); bun.scale.z = 1.4; bun.castShadow = true; g.add(bun);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), bm(whiteMat)); eye.position.set(sx * 0.55, 5.7, 1.2); g.add(eye);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), bm(blueMat)); pupil.position.set(sx * 0.55, 5.7, 1.56); g.add(pupil);
+      const brow = new THREE.Mesh(unitBox, bm(darkMat)); brow.position.set(sx * 0.6, 6.25, 1.3); brow.scale.set(0.6, 0.1, 0.1); brow.rotation.z = sx * -0.3; g.add(brow);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), bm(pinkMat)); cheek.position.set(sx * 1.0, 4.9, 1.15); g.add(cheek);
+      const leg = new THREE.Mesh(unitBox, bm(darkMat)); leg.position.set(sx * 0.6, 0.75, 0); leg.scale.set(0.5, 1.5, 0.5); g.add(leg);
+      const shoe = new THREE.Mesh(unitBox, bm(whiteMat)); shoe.position.set(sx * 0.6, 0.22, 0.3); shoe.scale.set(0.7, 0.44, 1.3); shoe.castShadow = true; g.add(shoe);
+      const toe = new THREE.Mesh(unitBox, bm(metalMat)); toe.position.set(sx * 0.6, 0.22, 0.95); toe.scale.set(0.72, 0.46, 0.1); g.add(toe);
     }
-    const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.09, 8, 16, Math.PI), darkMat); mouth.position.set(0, 4.75, 1.35); mouth.rotation.z = Math.PI; g.add(mouth);
-    const drip = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), ketchupMat); drip.position.set(0.1, 7.05, 0.2); drip.scale.y = 0.5; g.add(drip);
+    const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.09, 8, 16, Math.PI), bm(darkMat)); mouth.position.set(0, 4.75, 1.35); mouth.rotation.z = Math.PI; g.add(mouth);
+    const drip = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), bm(ketchupMat)); drip.position.set(0.1, 7.05, 0.2); drip.scale.y = 0.5; g.add(drip);
     // arms pivot at the shoulders; right arm throws, left holds ketchup over the head
     this.armR = new THREE.Group(); this.armR.position.set(2.3, 5.3, 0);
-    const armRm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), sausageMat); armRm.position.set(0.3, -1.2, 0); armRm.rotation.z = -0.25; this.armR.add(armRm);
-    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), skinMat); handR.position.set(0.6, -2.4, 0); this.armR.add(handR);
+    const armRm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), bm(sausageMat)); armRm.position.set(0.3, -1.2, 0); armRm.rotation.z = -0.25; this.armR.add(armRm);
+    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), bm(skinMat)); handR.position.set(0.6, -2.4, 0); this.armR.add(handR);
     this.heldDog = makeHotDog(); this.heldDog.scale.setScalar(5); this.heldDog.position.set(0.6, -2.4, 0.6); this.heldDog.rotation.y = Math.PI / 2; this.armR.add(this.heldDog);
-    const mustard = makeBottle(mustardLMat, 0.9); mustard.scale.setScalar(2.2); mustard.position.set(0.6, -2.4, -0.2); this.armR.add(mustard);
+    const mustard = makeBottle(bm(mustardLMat), 0.9); mustard.scale.setScalar(2.2); mustard.position.set(0.6, -2.4, -0.2); this.armR.add(mustard);
     this.armL = new THREE.Group(); this.armL.position.set(-2.3, 5.3, 0); this.armL.rotation.z = -2.6;
-    const armLm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), sausageMat); armLm.position.set(0, -1.2, 0); this.armL.add(armLm);
-    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), skinMat); handL.position.set(0, -2.4, 0); this.armL.add(handL);
-    const ketchup = makeBottle(ketchupMat, 0.9); ketchup.scale.setScalar(2.2); ketchup.position.set(0, -2.4, 0); ketchup.rotation.z = Math.PI; this.armL.add(ketchup);
+    const armLm = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), bm(sausageMat)); armLm.position.set(0, -1.2, 0); this.armL.add(armLm);
+    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), bm(skinMat)); handL.position.set(0, -2.4, 0); this.armL.add(handL);
+    const ketchup = makeBottle(bm(ketchupMat), 0.9); ketchup.scale.setScalar(2.2); ketchup.position.set(0, -2.4, 0); ketchup.rotation.z = Math.PI; this.armL.add(ketchup);
     g.add(sausage, mouth, this.armR, this.armL);
+    g.traverse(o => { o.castShadow = false; });
     this.handWorld = new THREE.Vector3();
   }
   update(wdt) {
@@ -577,7 +595,10 @@ class Boss {
     const eye = tmpA.set(P.pos.x, P.pos.y + P.eye, P.pos.z);
     const dx = eye.x - this.pos.x, dz = eye.z - this.pos.z, dist = Math.hypot(dx, dz);
     this.group.rotation.y = Math.atan2(dx, dz);
-    this.group.position.y = this.pos.y + Math.sin(this.t * 2) * 0.15;
+    this.group.position.y = this.pos.y + Math.sin(this.t * 2) * 0.15 * BOSS_SCALE;
+    // atmospheric haze: fade toward the fog colour with distance so it looms as a silhouette, never fogged out
+    const haze = clamp((dist - 120) / 480, 0, 0.78);
+    for (const m of bossMats) m.color.copy(m.userData.base).lerp(scene.fog.color, haze);
     if (!inBossZone) return;
     this.craveT -= wdt;
     if (this.craveT <= 0) { this.craveT = 8; this.craving = this.craving === 'ketchup' ? 'mustard' : 'ketchup'; yell(this, 'crave', { crave: [this.craving === 'ketchup' ? BOSS_YELLS.crave[0] : BOSS_YELLS.crave[1]] }); updateBossBar(); }
@@ -588,9 +609,9 @@ class Boss {
     if (this.throwT <= 0) {
       this.yelled = false; this.throwT = rand(2.6, 4.2) - 1.2 * (1 - this.hp / this.maxHp);
       this.heldDog.getWorldPosition(this.handWorld);
-      const lead = (dist / 20) * 0.6;
+      const lead = (dist / 42) * 0.45;
       const target = tmpC.set(eye.x + P.vel.x * lead, eye.y - 0.3, eye.z + P.vel.z * lead);
-      spawnBullet(this.handWorld, throwDir(this.handWorld, target, 20), this, { speed: 20, scale: 6, r: 1.5, big: true });
+      spawnBullet(this.handWorld, throwDir(this.handWorld, target, 42), this, { speed: 42, scale: 14, r: 2.2, big: true });
       SFX.shot(timeScale);
     }
   }
@@ -599,7 +620,7 @@ class Boss {
     const dmg = kind === this.craving ? 3 : 1;
     this.hp -= dmg; SFX.splat();
     const sp = new THREE.Mesh(new THREE.SphereGeometry(0.32 + dmg * 0.06, 8, 6), kind === 'ketchup' ? ketchupMat : mustardLMat);
-    sp.position.copy(this.group.worldToLocal(point.clone())); sp.scale.z = 0.5; this.group.add(sp); this.splats.push(sp);
+    sp.position.copy(this.group.worldToLocal(point.clone())); sp.scale.z = 0.5; sp.scale.multiplyScalar(1.6); this.group.add(sp); this.splats.push(sp);
     if (this.splats.length > 90) this.group.remove(this.splats.shift());
     if (Math.random() < 0.18) yell(this, 'hurt', BOSS_YELLS);
     updateBossBar();
@@ -607,7 +628,7 @@ class Boss {
   }
   die() {
     this.alive = false; won = true; this.group.visible = false;
-    spawnFrags(this.pos.x, this.pos.y + 4, this.pos.z, 70, 2.2);
+    spawnFrags(this.pos.x, this.pos.y + 4 * BOSS_SCALE, this.pos.z, 90, 3.5);
     yell(this, 'dead', BOSS_YELLS); SFX.bossRoar(); SFX.death();
     if (distance > best) { best = distance; try { localStorage.setItem('hotdog_best', best); } catch (e) {} }
     document.getElementById('wDist').textContent = distance; document.getElementById('wKills').textContent = kills;
@@ -660,7 +681,7 @@ function updateShots(wdt) {
     let dead = sh.life <= 0 || sh.pos.y < -30;
     if (!dead && boss && boss.alive) {
       const bx = boss.pos.x, bz = boss.pos.z, by = boss.group.position.y;
-      if (segPointDist2(bx, by + 1, bz, bx, by + 7.6, bz, sh.pos.x, sh.pos.y, sh.pos.z) < 2.4 * 2.4) { boss.hit(sh.kind, sh.pos); dead = true; }
+      if (segPointDist2(bx, by + 1 * BOSS_SCALE, bz, bx, by + 7.6 * BOSS_SCALE, bz, sh.pos.x, sh.pos.y, sh.pos.z) < (2.4 * BOSS_SCALE) ** 2) { boss.hit(sh.kind, sh.pos); dead = true; }
     }
     // condiments knock hot dogs (even the big one) out of the air, and sauce vendors
     if (!dead) for (let j = bullets.length - 1; j >= 0; j--) {
@@ -769,7 +790,7 @@ function resetGame() {
   for (const b of bullets) removeBullet(b); bullets = [];
   for (const f of frags) scene.remove(f.mesh); frags = [];
   for (const sh of shots) scene.remove(sh.mesh); shots = [];
-  if (boss) boss.dispose(); boss = null; arenaDone = false; inBossZone = false; won = false;
+  if (boss) boss.dispose(); boss = new Boss(0, BOSS_Y, BOSS_Z); arenaDone = false; inBossZone = false; won = false;
   document.getElementById('bossbar').classList.add('hidden'); document.getElementById('bMust').classList.add('hidden'); document.getElementById('banner').style.opacity = 0;
   agents = []; chunkIndex = 0; cursor.x = 0; cursor.y = 0; cursor.z = 0;
   P.pos.set(0, 0.01, 0); P.vel.set(0, 0, 0); P.yaw = 0; P.pitch = 0; P.roll = 0;
