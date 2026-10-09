@@ -7,8 +7,10 @@ they wind up (a mustard telegraph line), hurl hot dogs, and the hot dogs hang in
 Run, jump, slide, mantle and wall-run down the pier; dodge the dogs, shove vendors at arm's reach,
 or let them pelt each other. Every hot dog carries a pulsing ring (red once it's in reach). When one gets close,
 time snaps into slow-mo and a click **smacks** it back toward whatever you're looking at — vendors, or the boss.
-A procedural xylophone track (16-step sequencer, kick/snare/hat, bass) plays throughout; it muffles as time slows
-and speeds up in the boss zone. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
+The soundtrack is procedural (a 16-step lookahead sequencer) and arranged per pier: xylophone pop on the Boardwalk,
+a swung ice-cream-truck calypso with marimba and bells on Sunset Pier, a slow dreamy minor-pentatonic bell piece with
+a synth pad for the Night Market, a circus oom-pah organ with tuba and chord stabs on Storm Pier, and a double-time
+rush with an octave-doubled lead for the finale. It muffles as time slows and speeds up in the boss zone. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
 scale with a synth harmony underneath); one vendor sings at a time, each word lands on a beat of the music, and only
 vendors within ~24 m are audible. Your arm stays off-screen and jabs in from the bottom-right on a punch.
 
@@ -34,7 +36,8 @@ Five piers, each longer and meaner, with its own sky and its own giant at the en
 Each pier is themed top to bottom: hot dog vendors (pier 1); ice cream vendors whose cones split into three scoops
 at the top of the arc (pier 2); cotton candy carnies lobbing huge slow floating clouds (pier 3); ring-toss carnies
 throwing rings that home in on you (pier 4); and everything at once on pier 5. Each pier's giant boss matches its
-theme and throws its own giant version of that projectile — all of it smackable back at them. From
+theme and throws its own giant version of that projectile — all of it smackable back at them. Every vendor kind has
+its own yell lines and shatters into its own debris (scoops, fluff, rings, feathers) when shoved. From
 pier 2 on, seagulls perch above the pier and dive-bomb you when you get close. All of it is smackable.
 Vendors start harder on later piers and the music tempo climbs. Clearing a pier brings up a PIER CLEARED celebration (fireworks, confetti, fanfare, stats, next pier) and unlocks the next (saved in
 `localStorage`); press 1–5 on any menu to jump to an unlocked level. Beating all five brings up the VICTORY screen: fireworks, confetti, a

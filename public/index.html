@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.9.0">
+<meta name="version" content="1.9.1">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -88,7 +88,7 @@
   <div id="bossbar" class="hidden"><div class="bn" id="bossName">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.9.0</div>
+  <div id="ver">v1.9.1</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -141,7 +141,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -268,7 +268,6 @@ function noise(dur, vol, rate = 1) {
 // a lowpass closes as time slows so the track muffles in slow-mo, and the tempo kicks up in the boss zone.
 const MUSIC = { step: 0, nextT: 0, timer: null, gain: null, lp: null, phrase: null, phraseBar: -1 };
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16];
-const PROG = [0, -3, 5, 7];                       // C, Am, F, G
 const mf = semi => 523.25 * Math.pow(2, semi / 12);
 function noiseAt(t, dur, vol, hp = 2000) {
   const n = Math.floor(AC.sampleRate * dur), buf = AC.createBuffer(1, n, AC.sampleRate), d = buf.getChannelData(0);
@@ -289,26 +288,83 @@ function xylo(t, f, vol = 0.16) {
 function kick(t) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.11); g.gain.setValueAtTime(0.55, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + 0.22); }
 function snare(t) { noiseAt(t, 0.13, 0.28, 1200); const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(110, t + 0.08); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + 0.12); }
 function bass(t, f, dur) { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + dur + 0.02); }
-function makePhrase(density) {
-  // two-bar xylophone phrase: random walk on the pentatonic with octave leaps, built on scale degrees
-  const ph = []; let deg = 3;
+// instruments
+function marimba(t, f, vol = 0.16) {
+  const o = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain(), g2 = AC.createGain();
+  o.type = 'sine'; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 4; g2.gain.value = 0.12;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+  o.connect(g); o2.connect(g2).connect(g); g.connect(MUSIC.lp); o.start(t); o.stop(t + 0.6); o2.start(t); o2.stop(t + 0.6);
+}
+function bell(t, f, vol = 0.14) {
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 1.4); g.connect(MUSIC.lp);
+  for (const [mult, v] of [[1, 1], [2.76, 0.35], [5.4, 0.12]]) { const o = AC.createOscillator(), gg = AC.createGain(); o.frequency.value = f * mult; gg.gain.value = v; o.connect(gg).connect(g); o.start(t); o.stop(t + 1.5); }
+}
+function organ(t, f, dur = 0.22, vol = 0.1) {
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.setValueAtTime(vol, t + dur - 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + dur); g.connect(MUSIC.lp);
+  for (const [mult, type, v] of [[1, 'square', 0.5], [2, 'triangle', 0.5], [0.5, 'triangle', 0.3]]) { const o = AC.createOscillator(), gg = AC.createGain(); o.type = type; o.frequency.value = f * mult; gg.gain.value = v; o.connect(gg).connect(g); o.start(t); o.stop(t + dur + 0.02); }
+}
+function pad(t, f, dur) {
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06, t + dur * 0.3); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; g.connect(lp).connect(MUSIC.lp);
+  for (const [mult, det] of [[1, -6], [1, 6], [1.5, 0], [2, 3]]) { const o = AC.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f * mult; o.detune.value = det; o.connect(g); o.start(t); o.stop(t + dur + 0.05); }
+}
+function tuba(t, f) { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'square'; o.frequency.value = f; const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500; g.gain.setValueAtTime(0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(lp).connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + 0.32); }
+function rim(t) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = 900; g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04); o.connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + 0.05); noiseAt(t, 0.02, 0.08, 3000); }
+const LEADS = { xylo, marimba, bell, organ: (t, f, v) => organ(t, f, 0.2, 0.09) };
+function makePhrase(density, scale) {
+  // two-bar phrase: random walk on the level's scale with the odd octave leap, a note on every downbeat
+  const ph = []; let deg = Math.floor(scale.length / 2);
   for (let i = 0; i < 32; i++) {
     const hit = i % 4 === 0 ? true : Math.random() < density;
     if (!hit) { ph.push(null); continue; }
-    deg = clamp(deg + pick([-2, -1, -1, 1, 1, 2, 3, -3]), 0, PENTA.length - 1);
-    ph.push(PENTA[deg] + (Math.random() < 0.12 ? 12 : 0));
+    deg = clamp(deg + pick([-2, -1, -1, 1, 1, 2, 3, -3]), 0, scale.length - 1);
+    ph.push(scale[deg] + (Math.random() < 0.12 ? 12 : 0));
   }
   return ph;
 }
-function scheduleStep(s, t) {
-  const bar = Math.floor(s / 16), i = s % 16, root = PROG[bar % 4], boss = inBossZone;
-  if (Math.floor(bar / 2) !== MUSIC.phraseBar) { MUSIC.phraseBar = Math.floor(bar / 2); MUSIC.phrase = makePhrase(boss ? 0.8 : 0.6); }
-  if (i % 4 === 0) kick(t); if (boss && (i === 6 || i === 14)) kick(t);
-  if (i === 4 || i === 12) snare(t);
-  if (i % 2 === 0) noiseAt(t, 0.03, i % 4 === 2 ? 0.09 : 0.05, 6000);
-  if (i % 4 === 0 || (boss && i % 4 === 2)) bass(t, mf(root - 24), 0.25);
+function scheduleStep(s, t, stepDur) {
+  const M = LEVELS[level].music, bar = Math.floor(s / 16), i = s % 16, root = M.prog[bar % M.prog.length], boss = inBossZone;
+  const melRoot = M.melRoot ?? root;
+  const tt = t + (i % 4 === 2 ? (M.swing || 0) * stepDur * 0.66 : 0);   // swung off-eighths
+  if (Math.floor(bar / 2) !== MUSIC.phraseBar) { MUSIC.phraseBar = Math.floor(bar / 2); MUSIC.phrase = makePhrase(Math.min(0.95, M.density + (boss ? 0.2 : 0)), M.scale); }
+  switch (M.drums) {
+    case 'pop':
+      if (i % 4 === 0) kick(t); if (boss && (i === 6 || i === 14)) kick(t);
+      if (i === 4 || i === 12) snare(t);
+      if (i % 2 === 0) noiseAt(tt, 0.03, i % 4 === 2 ? 0.09 : 0.05, 6000);
+      if (i % 4 === 0 || (boss && i % 4 === 2)) bass(t, mf(root - 24), 0.25);
+      break;
+    case 'calypso':
+      if (i === 0 || i === 6 || i === 10) kick(t);
+      if (i === 4 || i === 12) rim(t); if (i === 14) rim(t);
+      if (i % 2 === 0) noiseAt(tt, 0.025, 0.045, 7000); if (i % 2 === 1) noiseAt(tt, 0.04, 0.03, 5000);   // hats + shaker
+      if (i === 0 || i === 6 || i === 8 || i === 14) bass(t, mf(root - 24 + (i === 14 ? 7 : 0)), 0.3);
+      break;
+    case 'dream':
+      if (i === 0) kick(t); if (i === 8) noiseAt(t, 0.25, 0.08, 800);                                      // soft kick, brushed snare
+      if (i % 4 === 2) noiseAt(tt, 0.03, 0.03, 8000);
+      if (i === 0) bass(t, mf(root - 24), 1.2);
+      if (M.pad && i === 0) pad(t, mf(root - 12), stepDur * 16);
+      break;
+    case 'oompah':
+      if (i === 0 || i === 8) tuba(t, mf(root - 24)); if (i === 4 || i === 12) tuba(t, mf(root - 17));     // oom
+      if (i === 4 || i === 12 || (boss && (i === 2 || i === 10))) for (const n of [0, 4, 7]) organ(t, mf(root + n - 12), 0.12, 0.05);   // pah
+      if (i % 2 === 0) noiseAt(t, 0.03, 0.06, 6000); if (i === 0) kick(t);
+      break;
+    case 'rush':
+      if (i % 4 === 0) kick(t); if (i === 6 || i === 14 || (boss && i % 4 === 2)) kick(t);
+      if (i === 4 || i === 12) snare(t); if (boss && i === 14) snare(t);
+      if (i % 2 === 0) noiseAt(t, 0.03, i % 4 === 2 ? 0.1 : 0.06, 6000); if (i % 2 === 1) noiseAt(t, 0.02, 0.03, 9000);
+      if (i % 2 === 0) bass(t, mf(root - 24), 0.18);
+      break;
+  }
   const n = MUSIC.phrase[(bar % 2) * 16 + i];
-  if (n !== null) { xylo(t, mf(root + n)); if (i % 8 === 0) xylo(t, mf(root + n + 12), 0.08); }
+  if (n !== null) {
+    const lead = LEADS[M.lead] || xylo; lead(tt, mf(melRoot + n));
+    if (M.octave && i % 2 === 0) lead(tt, mf(melRoot + n + 12), 0.07);
+    if (M.bell && i % 8 === 4) bell(tt, mf(melRoot + n + 12), 0.06);
+    if (!M.octave && !M.bell && i % 8 === 0) lead(tt, mf(melRoot + n + 12), 0.07);
+  }
 }
 function musicStart() {
   if (!AC || MUSIC.timer) return;
@@ -318,7 +374,7 @@ function musicStart() {
   MUSIC.nextT = AC.currentTime + 0.1;
   MUSIC.timer = setInterval(() => {
     const stepDur = 60 / (LEVELS[level].bpm + (inBossZone ? 22 : 0)) / 4;
-    while (MUSIC.nextT < AC.currentTime + 0.16) { scheduleStep(MUSIC.step++, MUSIC.nextT); MUSIC.nextT += stepDur; }
+    while (MUSIC.nextT < AC.currentTime + 0.16) { scheduleStep(MUSIC.step++, MUSIC.nextT, stepDur); MUSIC.nextT += stepDur; }
     MUSIC.lp.frequency.setTargetAtTime(380 + 9000 * Math.pow(timeScale, 0.6), AC.currentTime, 0.05);
     MUSIC.gain.gain.setTargetAtTime(muted ? 0 : (started && !paused ? 0.5 : 0.22), AC.currentTime, 0.1);
   }, 25);
@@ -542,6 +598,8 @@ const umbMat = striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), STRIP
 class Agent {
   constructor([x, y, z], d, kind) {
     this.kind = kind || pick(LEVELS[level].vendors || ['hotdog']); const K = KINDS[this.kind];
+    const KY = KIND_YELLS[this.kind] || KIND_YELLS.hotdog;
+    this.lines = { wind: [...KY.wind, ...KY.wind, ...GENERIC_YELLS.wind], shoved: [...KY.shoved, ...GENERIC_YELLS.shoved], ff: [...KY.ff, ...GENERIC_YELLS.ff] };
     this.pos = new THREE.Vector3(x, y, z);
     this.alive = true; this.d = d;
     this.aim = 0; this.aimTime = clamp(2.4 - d * 1.2, 1.1, 2.4) * rand(0.85, 1.15);
@@ -581,7 +639,7 @@ class Agent {
     if (los) { const a = [g.x, g.y, g.z], b = [eye.x, eye.y, eye.z]; for (const bx of boxes) if (segHitsBox(a, b, bx)) { los = false; break; } }
     if (los) this.aim += wdt; else this.aim = Math.max(0, this.aim - wdt * 2);
     const t = this.aim / this.aimTime;
-    if (t > 0.55 && !this.yelled) { this.yelled = true; yell(this, 'wind', KIND_YELLS[this.kind] && Math.random() < 0.6 ? { wind: KIND_YELLS[this.kind] } : YELLS); }
+    if (t > 0.55 && !this.yelled) { this.yelled = true; yell(this, 'wind', this.lines); }
     if (t < 0.2) this.yelled = false;
     this.tel.material.opacity = t > 0.55 ? (t - 0.55) / 0.45 * 0.8 : 0;
     if (this.tel.material.opacity > 0) {
@@ -605,8 +663,8 @@ class Agent {
   kill(cause = 'shoved') {
     if (!this.alive) return;
     this.alive = false; this.group.visible = false; this.tel.visible = false;
-    spawnFrags(this.pos.x, this.pos.y + 0.9, this.pos.z);
-    kills++; SFX.punch(); yell(this, cause);
+    spawnFrags(this.pos.x, this.pos.y + 0.9, this.pos.z, 12, 1, this.kind);
+    kills++; SFX.punch(); yell(this, cause, this.lines);
   }
   dispose() { scene.remove(this.tel); this.tel.geometry.dispose(); }
 }
@@ -671,11 +729,19 @@ function spawnBullet(p, dir, owner, opts = {}) {
 }
 function removeBullet(b) { scene.remove(b.mesh, b.trail, b.ring); }
 const fragGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-const fragMats = [redMat, mustardMat, apronMat, bunMat, sausageMat, new THREE.MeshLambertMaterial({ color: 0xd84a9a })];
-function spawnFrags(x, y, z, n = 12, sc = 1) {
-  // the vendor's stand goes flying: confetti, buns, sausages
+const FRAG_SETS = {
+  hotdog:   { mats: [redMat, mustardMat, apronMat, bunMat, sausageMat], piece: () => makeHotDog() },
+  scoop:    { mats: [pinkMat2, mintMat, creamMat, coneMat], piece: () => makeProjectile('scoop') },
+  icecream: { mats: [pinkMat2, mintMat, creamMat, coneMat], piece: () => makeProjectile('scoop') },
+  cotton:   { mats: [fluffMat, fluffMat2, creamMat], piece: () => new THREE.Mesh(new THREE.SphereGeometry(0.35, 7, 5), Math.random() < 0.5 ? fluffMat : fluffMat2) },
+  ring:     { mats: [new THREE.MeshLambertMaterial({ color: 0x3b7dd8 }), mustardMat, redMat, apronMat], piece: () => makeProjectile('ring') },
+  gull:     { mats: [gullMat, gullMat, beakMat], piece: () => { const m = new THREE.Mesh(unitBox, gullMat); m.scale.set(0.35, 0.02, 0.12); return m; } },
+};
+function spawnFrags(x, y, z, n = 12, sc = 1, kind = 'hotdog') {
+  // whatever just got shattered flies apart as its own kind of debris
+  const set = FRAG_SETS[kind] || FRAG_SETS.hotdog;
   for (let i = 0; i < n; i++) {
-    const m = i % 4 === 0 ? makeHotDog() : new THREE.Mesh(fragGeo, pick(fragMats)); m.position.set(x, y + rand(-0.6, 0.6) * sc, z); m.castShadow = true;
+    const m = i % 4 === 0 ? set.piece() : new THREE.Mesh(fragGeo, pick(set.mats)); m.position.set(x, y + rand(-0.6, 0.6) * sc, z); m.castShadow = true;
     m.scale.setScalar(sc);
     scene.add(m);
     frags.push({ mesh: m, vel: new THREE.Vector3(rand(-4, 4) * sc, rand(1, 7) * sc, rand(-4, 4) * sc), rot: new THREE.Vector3(rand(-5, 5), rand(-5, 5), rand(-5, 5)), life: 2.5 + sc });
@@ -692,10 +758,17 @@ const KINDS = {
   cotton:   { shirt: 0xd84a9a, cart: 0x9b6fd3, umb: 0xf7a8c4, held: 0xf4a3d8, bullet: { speed: 12, grav: 0.12, r: 1.05, life: 9 } },
   ring:     { shirt: 0x2f6fb5, cart: 0xf2b705, umb: 0x2f6fb5, held: 0xf2b705, bullet: { speed: 20, grav: 0,    r: 0.5,  life: 6, homing: 0.9 } },
 };
+// every vendor kind has its own voice; a few generic carnival barks are mixed in for all of them
+const GENERIC_YELLS = {
+  wind: ['HEY! YOU!', 'GET BACK HERE!', 'YOU DIDN\'T PAY!', 'NO RUNNING ON THE PIER!', 'COME BACK, PAL!', 'ORDER UP!'],
+  shoved: ['MY CART!', 'OOF!', 'I QUIT!', 'MY UMBRELLA!', 'TELL MY WIFE I LOVE HER!'],
+  ff: ['WATCH IT!', 'HEY! THAT WAS MINE!', 'WRONG GUY, SAL!'],
+};
 const KIND_YELLS = {
-  icecream: ['BRAIN FREEZE, PAL!', 'TWO SCOOPS OF PAIN!', 'SPRINKLES INCOMING!', 'YOU SCREAM, I SCREAM!'],
-  cotton:   ['STICKY SITUATION!', 'SUGAR RUSH!', 'FLUFF YOU!', 'EAT CLOUD!'],
-  ring:     ['RING AROUND THE RUNNER!', 'STEP RIGHT UP!', 'WINNER WINNER!', 'EVERY THROW\'S A WINNER!'],
+  hotdog:   { wind: ['EAT THIS!', 'EXTRA MUSTARD!', 'HOT DOG INCOMING!', 'FREE SAMPLE!', 'THAT\'S MY DOG!', 'YOU WANT RELISH WITH THAT?'], shoved: ['NOT THE BUNS!', 'MY WIENERS!'], ff: ['WATCH IT, FRANK!', 'MUSTARD IN MY EYE!'] },
+  icecream: { wind: ['BRAIN FREEZE, PAL!', 'TWO SCOOPS OF PAIN!', 'SPRINKLES INCOMING!', 'YOU SCREAM, I SCREAM!', 'CONE OF SHAME!', 'SOFT SERVE, HARD HIT!'], shoved: ['MY SCOOPS!', 'NOT THE SPRINKLES!', 'I\'M MELTING!', 'MY CONES!'], ff: ['BRAIN FREEZE!', 'WATCH THE CONES!', 'THAT\'S COLD, PAL!'] },
+  cotton:   { wind: ['STICKY SITUATION!', 'SUGAR RUSH!', 'FLUFF YOU!', 'EAT CLOUD!', 'FRESHLY SPUN DOOM!', 'PINK OR BLUE, EITHER KILLS!'], shoved: ['MY FLUFF!', 'SO STICKY!', 'I\'M UNRAVELLING!', 'MY STICKS!'], ff: ['HEY, THAT STICKS!', 'SUGAR IN MY EYE!', 'WATCH THE FLUFF!'] },
+  ring:     { wind: ['RING AROUND THE RUNNER!', 'STEP RIGHT UP!', 'WINNER WINNER!', 'EVERY THROW\'S A WINNER!', 'THREE THROWS, ONE RUNNER!', 'NO PRIZE FOR YOU!'], shoved: ['MY RINGS!', 'NO REFUNDS!', 'GAME OVER, MAN!', 'MY PRIZES!'], ff: ['FOUL THROW!', 'THAT ONE DOESN\'T COUNT!', 'RINGED, YA MUG!'] },
 };
 const LEVELS = [
   { name: 'THE BOARDWALK',   len: 560,  dBase: 0,    sky: 0x9fd8ef, fog: 0xbfe6f5, sea: 0x3f9ec4, sun: 0xfff2d0, hemi: [0xdff3ff, 0xd9b27a], boss: 'THE BIG WIENER',        color: 0xb8402a, hp: 6,  scale: 24, throw: [3.2, 4.6], bigSpeed: 42, bpm: 138, vendors: ['hotdog'], gulls: 0 },
@@ -704,6 +777,13 @@ const LEVELS = [
   { name: 'STORM PIER',      len: 940,  dBase: 0.65, sky: 0x7d8792, fog: 0x9aa4ad, sea: 0x2f4f5c, sun: 0xd0d8e0, hemi: [0xbfc8d0, 0x55606a], boss: 'THE RINGMASTER',        color: 0xc8341e, hp: 9,  scale: 27, throw: [2.3, 3.4], bigSpeed: 48, bpm: 156, vendors: ['ring'], gulls: 0.7, style: 'ring' },
   { name: 'THE END OF THE PIER', len: 1100, dBase: 0.85, sky: 0xc77bd8, fog: 0xe3b3ef, sea: 0x4a2f7a, sun: 0xffe6ff, hemi: [0xffd6ff, 0x6a3f8a], boss: 'THE WURST OF ALL',      color: 0x3a1f1a, hp: 11, scale: 32, throw: [2.0, 3.0], bigSpeed: 52, bpm: 164, rage: true, vendors: ['hotdog', 'icecream', 'cotton', 'ring'], gulls: 0.9 },
 ];
+const MAJOR = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16], MINOR_PENTA = [0, 3, 5, 7, 10, 12, 15, 17];
+LEVELS[0].music = { lead: 'xylo',    drums: 'pop',     scale: PENTA,       prog: [0, -3, 5, 7],   density: 0.6 };                       // boardwalk xylophone pop
+LEVELS[1].music = { lead: 'marimba', drums: 'calypso', scale: MAJOR,       prog: [0, 5, 7, 0],    density: 0.55, swing: 0.3, bell: true }; // ice-cream-truck calypso
+LEVELS[2].music = { lead: 'bell',    drums: 'dream',   scale: MINOR_PENTA, prog: [-3, -3, 5, 7],  density: 0.3, melRoot: -3, pad: true }; // dreamy night market
+LEVELS[3].music = { lead: 'organ',   drums: 'oompah',  scale: MAJOR,       prog: [0, 7, 0, 7],    density: 0.75 };                      // circus oom-pah organ
+LEVELS[4].music = { lead: 'xylo',    drums: 'rush',    scale: PENTA,       prog: [0, -3, 5, 7],   density: 0.85, octave: true };         // finale rush
+LEVELS[2].bpm = 118;
 let level = 0, unlocked = 0, totalDist = 0, totalKills = 0, totalSmacks = 0;
 try { unlocked = clamp(+localStorage.getItem('hotdog_unlocked') || 0, 0, LEVELS.length - 1); } catch (e) {}
 let ARENA_Z = -560, BOSS_Z = ARENA_Z - 56 - 80, BOSS_SCALE = 24;
@@ -866,7 +946,7 @@ class Boss {
     if (!this.alive) return;
     if (!big) { SFX.splat(); return; }
     this.hp -= 1; this.stagger = 1; shake = 1.2; hitstop = 0.5;
-    spawnFrags(point.x, point.y, point.z, 46, 3.2);
+    spawnFrags(point.x, point.y, point.z, 46, 3.2, this.bigKind);
     SFX.bossRoar(); SFX.splat(); SFX.smack();
     yell(this, 'hurt', this.yells);
     updateBossBar(); flashBossBar();
@@ -998,7 +1078,7 @@ function updateShots(wdt) {
     // condiments knock hot dogs (even the big one) out of the air, and sauce vendors
     if (!dead) for (let j = bullets.length - 1; j >= 0; j--) {
       const b = bullets[j];
-      if (sh.pos.distanceToSquared(b.pos) < (b.r + 0.2) * (b.r + 0.2)) { spawnFrags(b.pos.x, b.pos.y, b.pos.z, b.big ? 16 : 4, b.big ? 1.6 : 0.6); removeBullet(b); bullets.splice(j, 1); SFX.splat(); dead = true; break; }
+      if (sh.pos.distanceToSquared(b.pos) < (b.r + 0.2) * (b.r + 0.2)) { spawnFrags(b.pos.x, b.pos.y, b.pos.z, b.big ? 16 : 4, b.big ? 1.6 : 0.6, b.kind); removeBullet(b); bullets.splice(j, 1); SFX.splat(); dead = true; break; }
     }
     if (!dead) for (const a of agents) {
       if (!a.alive) continue;
@@ -1010,11 +1090,7 @@ function updateShots(wdt) {
 }
 
 // ---------- Vendor yelling ----------
-const YELLS = {
-  wind: ['HEY! YOU!', 'GET BACK HERE!', 'YOU DIDN\'T PAY!', 'EAT THIS!', 'NO RUNNING ON THE PIER!', 'EXTRA MUSTARD!', 'COME BACK, PAL!', 'HOT DOG INCOMING!', 'FREE SAMPLE!', 'THAT\'S MY DOG!', 'ORDER UP!', 'YOU WANT RELISH WITH THAT?'],
-  shoved: ['MY CART!', 'OOF!', 'NOT THE BUNS!', 'I QUIT!', 'MY UMBRELLA!', 'TELL MY WIFE I LOVE HER!'],
-  ff: ['WATCH IT, FRANK!', 'HEY! THAT WAS MINE!', 'MUSTARD IN MY EYE!', 'WRONG GUY, SAL!'],
-};
+const YELLS = GENERIC_YELLS;
 const yells = [];
 const hudEl = document.getElementById('hud');
 function yell(agent, kind, lines = YELLS) {
@@ -1267,7 +1343,7 @@ function smack() {
         b.vel.copy(target).sub(b.pos).normalize().multiplyScalar(75); b.vel.y += 0.5 * BULLET_G * flight;
         b.owner = null; b.deflected = true; b.life = 8; b.ring.material.color.set(0x3b7dd8);
         hitstop = 0.3; shake = 0.5;
-      } else { spawnFrags(b.pos.x, b.pos.y, b.pos.z, 18, 1.8); removeBullet(b); bullets.splice(i, 1); }
+      } else { spawnFrags(b.pos.x, b.pos.y, b.pos.z, 18, 1.8, b.kind); removeBullet(b); bullets.splice(i, 1); }
     }
     else {
       // send it back as your projectile: at a vendor in your look cone if there is one, else at where you're looking
@@ -1384,7 +1460,7 @@ function updateWorld(wdt) {
       if (!a.alive || a === b.owner) continue;
       if (segPointDist2(ox, oy, oz, b.pos.x, b.pos.y, b.pos.z, a.pos.x, a.pos.y + 0.9, a.pos.z) < (b.r + 0.15) * (b.r + 0.15)) { a.kill('ff'); if (!b.big) { dead = true; break; } }
     }
-    if (!dead) for (const bx of boxes) if (pointInBox(b.pos.x, b.pos.y, b.pos.z, bx)) { dead = true; if (b.big) spawnFrags(b.pos.x, b.pos.y + 0.5, b.pos.z, 14, 1.4); break; }
+    if (!dead) for (const bx of boxes) if (pointInBox(b.pos.x, b.pos.y, b.pos.z, bx)) { dead = true; if (b.big) spawnFrags(b.pos.x, b.pos.y + 0.5, b.pos.z, 14, 1.4, b.kind); break; }
     if (dead) { removeBullet(b); bullets.splice(i, 1); continue; }
     b.mesh.position.copy(b.pos);
     if (b.kind === 'gull') { b.mesh.lookAt(tmpD.copy(b.pos).add(b.vel)); b.mesh.rotateY(Math.PI); const f = Math.sin(performance.now() / 70) * 0.7; b.mesh.userData.wings[0].rotation.z = f; b.mesh.userData.wings[1].rotation.z = -f; }
