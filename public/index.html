@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.6.3">
+<meta name="version" content="1.7.0">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -30,6 +30,11 @@
   #bMust { bottom:36px; right:36px; background:rgba(242,183,5,.55); }
   #smackHint { position:absolute; left:50%; top:50%; transform:translate(-50%, 28px); font-weight:900; font-size:22px; letter-spacing:4px; color:#d83a1e; text-shadow:0 0 12px rgba(242,183,5,.9), 0 1px 0 #fff; animation:smack .35s infinite alternate; }
   @keyframes smack { from { transform:translate(-50%, 28px) scale(1); } to { transform:translate(-50%, 28px) scale(1.18); } }
+  #lvl { position:absolute; top:112px; left:16px; font-size:11px; font-weight:800; letter-spacing:3px; opacity:.6; }
+  #levelPick { font-size:12px; letter-spacing:2px; font-weight:700; opacity:.7; margin-top:10px; }
+  #victoryCard h1 { font-size:64px; letter-spacing:10px; }
+  .confetti { position:absolute; top:-20px; width:10px; height:16px; opacity:.9; animation:fall linear infinite; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(720deg); } }
   #ver { position:absolute; right:10px; bottom:8px; font-size:11px; opacity:.45; font-weight:600; }
   #vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(242,183,5,0) 50%, rgba(216,58,30,.6) 100%); opacity:0; transition:opacity .15s; }
   #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:repeating-linear-gradient(90deg, rgba(255,250,240,.94) 0 40px, rgba(255,214,214,.94) 40px 80px); cursor:pointer; }
@@ -58,14 +63,15 @@
 <div id="hud">
   <div id="vig"></div>
   <div class="tl"><small>DISTANCE</small><span id="dist">0</span> m<small style="margin-top:6px">SHOVES</small><span id="kills">0</span></div>
+  <div id="lvl">LEVEL 1 &middot; THE BOARDWALK</div>
   <div class="tr">BEST <span id="best">0</span> m</div>
   <div id="xh"></div>
   <div id="smackHint" class="hidden">SMACK!</div>
   <div id="tlabel">BOARDWALK TIME</div>
-  <div id="bossbar" class="hidden"><div class="bn">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
+  <div id="bossbar" class="hidden"><div class="bn" id="bossName">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.6.3</div>
+  <div id="ver">v1.7.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -83,6 +89,7 @@
       <b>Boss zone</b><span>smack his giant hot dogs back at him</span>
     </div>
     <p style="font-size:13px;opacity:.6">Stand still and the hot dogs hang in the air. When one gets close, time slows: click to smack it back at them.<br>At the end of the pier waits the Big Wiener. Bring condiments.</p>
+    <div id="levelPick">LEVEL 1 &middot; THE BOARDWALK &mdash; PRESS 1&ndash;5 TO PICK AN UNLOCKED LEVEL</div>
     <div class="go">CLICK TO START</div>
   </div>
   <div class="card hidden" id="deadCard">
@@ -92,10 +99,16 @@
     <div class="go">CLICK TO RETRY</div>
   </div>
   <div class="card hidden" id="winCard">
-    <h2 style="color:#2f6fb5">PIER CLEARED</h2>
-    <p>The Big Wiener has been thoroughly condimented.</p>
+    <h2 style="color:#2f6fb5" id="wTitle">LEVEL 1 CLEARED</h2>
+    <p id="wText">The Big Wiener has been returned to sender.</p>
     <p><span id="wDist">0</span> m of pier &middot; <span id="wKills">0</span> vendors shoved</p>
-    <div class="go">CLICK TO RUN IT AGAIN</div>
+    <div class="go" id="wGo">CLICK FOR THE NEXT PIER</div>
+  </div>
+  <div class="card hidden" id="victoryCard">
+    <h1>VIC<span>TO</span><em>RY</em></h1>
+    <p>Five piers. Five giant wieners. All of them sent home.<br>The boardwalk is yours.</p>
+    <p style="font-weight:800"><span id="vDist">0</span> m run &middot; <span id="vKills">0</span> vendors shoved &middot; <span id="vSmacks">0</span> hot dogs smacked</p>
+    <div class="go">CLICK TO RUN IT ALL AGAIN</div>
   </div>
   <div class="card hidden" id="pauseCard">
     <h2 style="color:#111">PAUSED</h2>
@@ -107,7 +120,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.6.3';
+const VERSION = '1.7.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -283,7 +296,7 @@ function musicStart() {
   MUSIC.lp.connect(MUSIC.gain).connect(AC.destination);
   MUSIC.nextT = AC.currentTime + 0.1;
   MUSIC.timer = setInterval(() => {
-    const stepDur = 60 / (inBossZone ? 160 : 138) / 4;
+    const stepDur = 60 / (LEVELS[level].bpm + (inBossZone ? 22 : 0)) / 4;
     while (MUSIC.nextT < AC.currentTime + 0.16) { scheduleStep(MUSIC.step++, MUSIC.nextT); MUSIC.nextT += stepDur; }
     MUSIC.lp.frequency.setTargetAtTime(380 + 9000 * Math.pow(timeScale, 0.6), AC.currentTime, 0.05);
     MUSIC.gain.gain.setTargetAtTime(muted ? 0 : (started && !paused ? 0.5 : 0.22), AC.currentTime, 0.1);
@@ -327,7 +340,7 @@ function addBox(ch, cx, bottom, zFront, w, h, len, mat = platMat, collide = true
 
 function genChunk() {
   const i = chunkIndex++;
-  const d = Math.min(1, i / 35);                       // difficulty 0..1
+  const d = Math.min(1, LEVELS[level].dBase + i / 35);   // difficulty 0..1, starts higher on later piers
   const ch = { group: new THREE.Group(), boxes: [], agents: [], zStart: cursor.z, zEnd: 0 };
   scene.add(ch.group);
   const spots = [];
@@ -618,9 +631,33 @@ function spawnFrags(x, y, z, n = 12, sc = 1) {
 }
 
 // ---------- The Big Wiener (final boss) ----------
-const ARENA_Z = -560, BOSS_Z = ARENA_Z - 56 - 80, BOSS_SCALE = 24, BOSS_Y = -30;   // a ~180 m Big Wiener stands in the sea beyond the pier's end, visible from spawn
+// ---------- Levels ----------
+// each pier is longer and meaner, with its own sky and its own giant at the end
+const LEVELS = [
+  { name: 'THE BOARDWALK',   len: 560,  dBase: 0,    sky: 0x9fd8ef, fog: 0xbfe6f5, sea: 0x3f9ec4, sun: 0xfff2d0, hemi: [0xdff3ff, 0xd9b27a], boss: 'THE BIG WIENER',        color: 0xb8402a, hp: 6,  scale: 24, throw: [3.2, 4.6], bigSpeed: 42, bpm: 138 },
+  { name: 'SUNSET PIER',     len: 700,  dBase: 0.25, sky: 0xf6a560, fog: 0xf9c99a, sea: 0x3a7fb0, sun: 0xffd9a0, hemi: [0xffe0b8, 0xc98a5a], boss: 'THE BRATWURST BARON',   color: 0xd9b48a, hp: 7,  scale: 25, throw: [2.9, 4.2], bigSpeed: 44, bpm: 144 },
+  { name: 'NIGHT MARKET',    len: 820,  dBase: 0.45, sky: 0x1b2a55, fog: 0x2d3f78, sea: 0x14305a, sun: 0xaabcff, hemi: [0x8aa0ff, 0x3b2f4a], boss: 'THE KIELBASA KING',     color: 0x7a2e22, hp: 8,  scale: 26, throw: [2.6, 3.8], bigSpeed: 46, bpm: 150 },
+  { name: 'STORM PIER',      len: 940,  dBase: 0.65, sky: 0x7d8792, fog: 0x9aa4ad, sea: 0x2f4f5c, sun: 0xd0d8e0, hemi: [0xbfc8d0, 0x55606a], boss: 'THE CHILI DOG CHAMPION', color: 0xc8341e, hp: 9,  scale: 27, throw: [2.3, 3.4], bigSpeed: 48, bpm: 156 },
+  { name: 'THE END OF THE PIER', len: 1100, dBase: 0.85, sky: 0xc77bd8, fog: 0xe3b3ef, sea: 0x4a2f7a, sun: 0xffe6ff, hemi: [0xffd6ff, 0x6a3f8a], boss: 'THE WURST OF ALL',      color: 0x3a1f1a, hp: 11, scale: 32, throw: [2.0, 3.0], bigSpeed: 52, bpm: 164, rage: true },
+];
+let level = 0, unlocked = 0, totalDist = 0, totalKills = 0, totalSmacks = 0;
+try { unlocked = clamp(+localStorage.getItem('hotdog_unlocked') || 0, 0, LEVELS.length - 1); } catch (e) {}
+let ARENA_Z = -560, BOSS_Z = ARENA_Z - 56 - 80, BOSS_SCALE = 24;
+const BOSS_Y = -30;   // the giant stands in the sea beyond the pier's end, visible from spawn
+const hemi = scene.children.find(o => o.isHemisphereLight);
+function applyLevel() {
+  const L = LEVELS[level];
+  ARENA_Z = -L.len; BOSS_Z = ARENA_Z - 56 - 80; BOSS_SCALE = L.scale;
+  scene.background.set(L.sky); scene.fog.color.set(L.fog); ground.material.color.set(L.sea); sun.color.set(L.sun);
+  hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]);
+  document.body.style.background = '#' + L.sky.toString(16).padStart(6, '0');
+  const label = 'LEVEL ' + (level + 1) + ' &middot; ' + L.name;
+  document.getElementById('lvl').innerHTML = label;
+  document.getElementById('levelPick').innerHTML = label + ' &mdash; PRESS 1&ndash;' + LEVELS.length + ' TO PICK A LEVEL (' + (unlocked + 1) + ' UNLOCKED)';
+  document.getElementById('bossName').textContent = L.boss;
+}
 const bossMats = [];
-function bm(mat) { const m = mat.clone(); m.fog = false; m.userData.base = m.color.clone(); bossMats.push(m); return m; }
+function bm(mat) { const m = mat.clone(); m.fog = false; m.userData.src = mat; m.userData.base = m.color.clone(); bossMats.push(m); return m; }
 let boss = null, arenaDone = false, inBossZone = false, bossZoneZ = 0, won = false;
 const BOSS_YELLS = {
   wind: ['I AM THE WURST!', 'YOU CAN\'T RELISH THIS!', 'COME GET SOME, BUN!', 'FRESH OUT OF MERCY!', 'EAT THE BIG ONE!', 'NOBODY DASHES MY DOGS!'],
@@ -642,10 +679,11 @@ function makeBottle(mat, h = 0.26) {
 }
 class Boss {
   constructor(x, y, z) {
-    this.pos = new THREE.Vector3(x, y, z); this.hp = 6; this.maxHp = 6; this.alive = true;
+    const L = LEVELS[level]; this.cfg = L;
+    this.pos = new THREE.Vector3(x, y, z); this.hp = L.hp; this.maxHp = L.hp; this.alive = true;
     this.stagger = 0; this.enraged = false; this.dying = 0; this.doubleT = 0;
     this.throwT = 3.5; this.craving = 'ketchup'; this.craveT = 8; this.voice = 0.45; this.yellH = 9.5 * BOSS_SCALE; this.yelled = false; this.t = 0;
-    this.splats = []; bossMats.length = 0;
+    bossMats.length = 0;
     const g = this.group = new THREE.Group(); g.position.copy(this.pos); g.scale.setScalar(BOSS_SCALE); scene.add(g);
     // sausage body between two bun halves, big face, sneakers, a bottle in each hand (ketchup held over the head)
     const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(1.35, 5.2, 6, 16), bm(sausageMat)); sausage.position.y = 4.3; sausage.castShadow = true;
@@ -673,6 +711,8 @@ class Boss {
     const ketchup = makeBottle(bm(ketchupMat), 0.9); ketchup.scale.setScalar(2.2); ketchup.position.set(0, -2.4, 0); ketchup.rotation.z = Math.PI; this.armL.add(ketchup);
     g.add(sausage, mouth, this.armR, this.armL);
     g.traverse(o => { o.castShadow = false; });
+    for (const m of bossMats) if (m.userData.src === sausageMat) { m.color.set(L.color); m.userData.base = m.color.clone(); }
+    if (L.rage) { this.enraged = true; }
     this.handWorld = new THREE.Vector3();
   }
   update(wdt) {
@@ -691,7 +731,7 @@ class Boss {
     this.armR.rotation.x = -wind * 2.2;
     if (this.throwT < 1.2 && !this.yelled) { this.yelled = true; yell(this, 'wind', BOSS_YELLS); SFX.bossRoar(); }
     if (this.throwT <= 0 || (this.doubleT < 0 && this.doubleT > -1)) {
-      if (this.throwT <= 0) { this.yelled = false; this.throwT = this.enraged ? rand(2.2, 3.2) : rand(3.2, 4.6); if (this.enraged) this.doubleT = 0.7; }
+      if (this.throwT <= 0) { this.yelled = false; const [a, b] = this.cfg.throw; this.throwT = this.enraged ? rand(a * 0.7, b * 0.7) : rand(a, b); if (this.enraged) this.doubleT = 0.7; }
       if (this.doubleT < 0) this.doubleT = -5;                     // the enraged second throw fires once
       this.throw(eye, dist);
     }
@@ -700,7 +740,8 @@ class Boss {
     this.heldDog.getWorldPosition(this.handWorld);
     const lead = (dist / 42) * 0.45;
     const target = tmpC.set(eye.x + P.vel.x * lead, eye.y - 0.3, eye.z + P.vel.z * lead);
-    spawnBullet(this.handWorld, throwDir(this.handWorld, target, 42), this, { speed: 42, scale: 14, r: 2.2, big: true });
+    const v = this.cfg.bigSpeed;
+    spawnBullet(this.handWorld, throwDir(this.handWorld, target, v), this, { speed: v, scale: 14, r: 2.2, big: true });
     SFX.shot(timeScale);
   }
   // real-time animation (runs even when world time is frozen): stagger recoil, death collapse
@@ -713,23 +754,20 @@ class Boss {
       tilt = -1.5 * e;                                           // topples backward into the sea
       this.group.position.y = this.pos.y - 40 * e * e;
       if (!this.splashed && k > 0.75) { this.splashed = true; splash(this.pos.x, -30, this.pos.z - 40); shake = 1.5; SFX.bossRoar(); }
-      if (k >= 1 && !this.finished) { this.finished = true; this.group.visible = false; setTimeout(() => { showCard('winCard'); if (document.pointerLockElement) document.exitPointerLock(); }, 600); }
+      if (k >= 1 && !this.finished) { this.finished = true; this.group.visible = false; setTimeout(levelCleared, 600); }
     }
     this.group.rotation.x = tilt;
   }
   // only his own giant hot dogs hurt him; small ones just splat harmlessly
   hit(kind, point, big = false) {
     if (!this.alive) return;
-    const sp = new THREE.Mesh(new THREE.SphereGeometry(big ? 1.1 : 0.35, 8, 6), bunMat);
-    sp.position.copy(this.group.worldToLocal(point.clone())); sp.scale.z = 0.5; this.group.add(sp); this.splats.push(sp);
-    if (this.splats.length > 60) this.group.remove(this.splats.shift());
     if (!big) { SFX.splat(); return; }
     this.hp -= 1; this.stagger = 1; shake = 1.2; hitstop = 0.5;
     spawnFrags(point.x, point.y, point.z, 46, 3.2);
     SFX.bossRoar(); SFX.splat(); SFX.smack();
     yell(this, 'hurt', BOSS_YELLS);
     updateBossBar(); flashBossBar();
-    if (!this.enraged && this.hp <= 3 && this.hp > 0) { this.enraged = true; banner('ENRAGED', 'HE THROWS TWICE NOW'); setTimeout(() => yell(this, 'rage', BOSS_YELLS), 900); }
+    if (!this.enraged && this.hp <= Math.ceil(this.maxHp / 2) && this.hp > 0) { this.enraged = true; banner('ENRAGED', 'HE THROWS TWICE NOW'); setTimeout(() => yell(this, 'rage', BOSS_YELLS), 900); }
     if (this.hp <= 0) this.die();
   }
   die() {
@@ -738,15 +776,39 @@ class Boss {
     yell(this, 'dead', BOSS_YELLS); SFX.bossRoar(); SFX.death();
     banner('TIMBER', 'THE BIG WIENER FALLS');
     if (distance > best) { best = distance; try { localStorage.setItem('hotdog_best', best); } catch (e) {} }
-    document.getElementById('wDist').textContent = distance; document.getElementById('wKills').textContent = kills;
+    totalDist += distance; totalKills += kills; totalSmacks += smacks;
+    if (level + 1 > unlocked && level + 1 < LEVELS.length) { unlocked = level + 1; try { localStorage.setItem('hotdog_unlocked', unlocked); } catch (e) {} }
     document.getElementById('bossbar').classList.add('hidden');
   }
   dispose() { scene.remove(this.group); }
+}
+function levelCleared() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (level === LEVELS.length - 1) {
+    document.getElementById('vDist').textContent = totalDist; document.getElementById('vKills').textContent = totalKills; document.getElementById('vSmacks').textContent = totalSmacks;
+    showCard('victoryCard'); confetti();
+  } else {
+    document.getElementById('wTitle').textContent = 'LEVEL ' + (level + 1) + ' CLEARED';
+    document.getElementById('wText').textContent = LEVELS[level].boss.replace(/^THE /, 'The ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) + ' has been returned to sender. Next: ' + LEVELS[level + 1].name + '.';
+    document.getElementById('wDist').textContent = distance; document.getElementById('wKills').textContent = kills;
+    showCard('winCard');
+  }
+}
+function confetti() {
+  const ov = document.getElementById('overlay'); ov.querySelectorAll('.confetti').forEach(c => c.remove());
+  const colors = ['#d83a1e', '#f2b705', '#2f6fb5', '#5aa84a', '#d84a9a', '#fff'];
+  for (let i = 0; i < 90; i++) {
+    const c = document.createElement('div'); c.className = 'confetti';
+    c.style.left = Math.random() * 100 + '%'; c.style.background = pick(colors);
+    c.style.animationDuration = rand(2.5, 5) + 's'; c.style.animationDelay = -rand(0, 5) + 's'; c.style.transform = 'rotate(' + rand(0, 360) + 'deg)';
+    ov.appendChild(c);
+  }
 }
 function updateBossBar() {
   if (!boss) return;
   document.getElementById('bfill').style.transform = 'scaleX(' + Math.max(0, boss.hp / boss.maxHp) + ')';
   const c = document.getElementById('crave'); c.textContent = boss.enraged ? 'ENRAGED' : 'SMACK HIS DOGS BACK'; c.className = boss.enraged ? 'k' : 'm';
+  document.getElementById('bossName').textContent = boss.cfg.boss;
 }
 function flashBossBar() { const bb = document.getElementById('bossbar'); bb.style.transform = 'translateX(-50%) scale(1.12)'; setTimeout(() => { bb.style.transform = 'translateX(-50%)'; }, 180); }
 let shake = 0, hitstop = 0;
@@ -866,7 +928,7 @@ function sing(line, voice, srcPos) {
   const words = line.replace(/[!?,]/g, '').split(' ');
   let note = Math.floor(rand(2, SCALE.length - 2));
   // beat grid: next quarter-note boundary from the sequencer (falls back to immediate if the music isn't running)
-  const stepDur = 60 / (inBossZone ? 160 : 138) / 4, beat = stepDur * 4;
+  const stepDur = 60 / (LEVELS[level].bpm + (inBossZone ? 22 : 0)) / 4, beat = stepDur * 4;
   let t0 = 0;
   if (AC && MUSIC.timer) { const toBeat = (4 - (MUSIC.step % 4)) % 4; t0 = Math.max(0, MUSIC.nextT + toBeat * stepDur - AC.currentTime); }
   singingUntil = performance.now() + (t0 + words.length * beat) * 1000 + 150;
@@ -916,7 +978,9 @@ function resetGame() {
   for (const b of bullets) removeBullet(b); bullets = [];
   for (const f of frags) scene.remove(f.mesh); frags = [];
   for (const sh of shots) scene.remove(sh.mesh); shots = [];
+  applyLevel();
   if (boss) boss.dispose(); boss = new Boss(0, BOSS_Y, BOSS_Z); arenaDone = false; inBossZone = false; won = false;
+  document.getElementById('overlay').querySelectorAll('.confetti').forEach(c => c.remove());
   document.getElementById('bossbar').classList.add('hidden'); document.getElementById('bMust').classList.add('hidden'); document.getElementById('banner').style.opacity = 0;
   agents = []; chunkIndex = 0; cursor.x = 0; cursor.y = 0; cursor.z = 0;
   P.pos.set(0, 0.01, 0); P.vel.set(0, 0, 0); P.yaw = 0; P.pitch = 0; P.roll = 0;
@@ -1241,12 +1305,12 @@ function tick(dt) {
 }
 resetGame();
 requestAnimationFrame(frame);
-window.__T = { P, keys, camera, fist, scene, renderer, sun, fireGun, tick, smack, get danger() { return danger; }, get smacks() { return smacks; }, get boss() { return boss; }, get shots() { return shots; }, get inBossZone() { return inBossZone; }, get won() { return won; }, get boxes() { return boxes; }, get chunks() { return chunks; }, get ts() { return timeScale; }, get agents() { return agents; }, get bullets() { return bullets; }, get started() { return started; }, get paused() { return paused; } };
+window.__T = { P, keys, camera, fist, scene, renderer, sun, fireGun, tick, smack, LEVELS, levelCleared, get level() { return level; }, set level(v) { level = v; }, get unlocked() { return unlocked; }, get danger() { return danger; }, get smacks() { return smacks; }, get boss() { return boss; }, get shots() { return shots; }, get inBossZone() { return inBossZone; }, get won() { return won; }, get boxes() { return boxes; }, get chunks() { return chunks; }, get ts() { return timeScale; }, get agents() { return agents; }, get bullets() { return bullets; }, get started() { return started; }, get paused() { return paused; } };
 
 // ---------- Input ----------
 const overlay = document.getElementById('overlay');
 function showCard(id) {
-  for (const c of ['startCard', 'deadCard', 'pauseCard', 'winCard']) document.getElementById(c).classList.toggle('hidden', c !== id);
+  for (const c of ['startCard', 'deadCard', 'pauseCard', 'winCard', 'victoryCard']) document.getElementById(c).classList.toggle('hidden', c !== id);
   overlay.classList.remove('hidden');
 }
 let pointerLockOK = false, lockFailed = false;
@@ -1265,6 +1329,7 @@ function updateLockHint() {
 }
 overlay.addEventListener('click', () => {
   initAudio(); if (AC && AC.state === 'suspended') AC.resume(); musicStart();
+  if (won) { if (level === LEVELS.length - 1) { level = 0; totalDist = totalKills = totalSmacks = 0; } else level++; }
   if (!P.alive || won) { resetGame(); document.getElementById('vig').style.opacity = 0; }
   started = true; paused = false;
   overlay.classList.add('hidden');
@@ -1282,6 +1347,7 @@ document.addEventListener('pointerlockerror', () => { lockFailed = true; updateL
 addEventListener('keydown', e => {
   if (e.code === 'Space') { if (!keys.Space) P.jumpBuf = 0.15; e.preventDefault(); }
   if (e.code === 'KeyM') muted = !muted;
+  if (!overlay.classList.contains('hidden') && e.code.startsWith('Digit')) { const n = +e.code.slice(5) - 1; if (n >= 0 && n <= unlocked && n < LEVELS.length && n !== level) { level = n; totalDist = totalKills = totalSmacks = 0; resetGame(); } }
   if (e.code === 'KeyQ') fireGun('ketchup');
   if (e.code === 'KeyE') fireGun('mustard');
   if (e.code === 'Escape' && started && P.alive) { paused = true; showCard('pauseCard'); updateLockHint(); }

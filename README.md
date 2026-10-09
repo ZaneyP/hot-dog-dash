@@ -15,9 +15,25 @@ vendors within ~24 m are audible. Your arm stays off-screen and jabs in from the
 **The Big Wiener** — a ~180 m hot dog standing in the sea at the end of the pier — is visible from the moment you spawn
 and grows as you run (it's exempt from fog and hazed by distance instead). The pier bridges into an arena at its feet
 (560 m); there it winds up and lobs giant hot dogs down at you. The fight is a duel of reflexes: when a giant dog gets
-close, time snaps into slow-mo — smack it and it flies straight back into his chest. Six returned dogs finish him
-(hitstop, camera shake and a stagger on every hit; at three he goes ENRAGED and throws twice). On the last hit he
+close, time snaps into slow-mo — smack it and it flies straight back into his chest. Each returned dog takes a notch off his health bar
+(hitstop, camera shake and a stagger on every hit; at half health he goes ENRAGED and throws twice). On the last hit he
 topples backward into the sea.
+
+## Levels
+
+Five piers, each longer and meaner, with its own sky and its own giant at the end:
+
+| # | Pier | Length | Boss | HP |
+| --- | --- | --- | --- | --- |
+| 1 | The Boardwalk | 560 m | The Big Wiener | 6 |
+| 2 | Sunset Pier | 700 m | The Bratwurst Baron | 7 |
+| 3 | Night Market | 820 m | The Kielbasa King | 8 |
+| 4 | Storm Pier | 940 m | The Chili Dog Champion | 9 |
+| 5 | The End of the Pier | 1100 m | The Wurst of All (enraged from the start) | 11 |
+
+Vendors start harder on later piers and the music tempo climbs. Clearing a pier unlocks the next (saved in
+`localStorage`); press 1–5 on any menu to jump to an unlocked level. Beating all five shows the VICTORY screen with
+your campaign totals.
 
 - `public/index.html` — the entire game (no build step; Three.js is loaded from a CDN)
 - `wrangler.jsonc` — Cloudflare Pages config (`pages_build_output_dir: ./public`)
