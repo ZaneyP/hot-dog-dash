@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.4.0">
+<meta name="version" content="1.5.0">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -28,6 +28,8 @@
   #banner { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); text-align:center; font-weight:900; font-size:34px; letter-spacing:6px; color:#d83a1e; opacity:0; transition:opacity .4s; }
   #banner small { display:block; font-size:12px; letter-spacing:3px; color:#2a1a0e; margin-top:8px; }
   #bMust { bottom:36px; right:36px; background:rgba(242,183,5,.55); }
+  #smackHint { position:absolute; left:50%; top:50%; transform:translate(-50%, 28px); font-weight:900; font-size:22px; letter-spacing:4px; color:#d83a1e; text-shadow:0 0 12px rgba(242,183,5,.9), 0 1px 0 #fff; animation:smack .35s infinite alternate; }
+  @keyframes smack { from { transform:translate(-50%, 28px) scale(1); } to { transform:translate(-50%, 28px) scale(1.18); } }
   #ver { position:absolute; right:10px; bottom:8px; font-size:11px; opacity:.45; font-weight:600; }
   #vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(242,183,5,0) 50%, rgba(216,58,30,.6) 100%); opacity:0; transition:opacity .15s; }
   #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:repeating-linear-gradient(90deg, rgba(255,250,240,.94) 0 40px, rgba(255,214,214,.94) 40px 80px); cursor:pointer; }
@@ -58,11 +60,12 @@
   <div class="tl"><small>DISTANCE</small><span id="dist">0</span> m<small style="margin-top:6px">SHOVES</small><span id="kills">0</span></div>
   <div class="tr">BEST <span id="best">0</span> m</div>
   <div id="xh"></div>
+  <div id="smackHint" class="hidden">SMACK!</div>
   <div id="tlabel">BOARDWALK TIME</div>
   <div id="bossbar" class="hidden"><div class="bn">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.4.0</div>
+  <div id="ver">v1.5.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -75,11 +78,11 @@
       <b>Mouse</b><span>look</span>
       <b>Space</b><span>jump &middot; wall-jump</span>
       <b>Shift</b><span>slide</span>
-      <b>Click</b><span>shove a vendor</span>
+      <b>Click</b><span>shove a vendor &middot; <b>smack</b> a close hot dog</span>
       <b>Air + wall</b><span>wall-run</span>
       <b>Boss zone</b><span>L-click ketchup &middot; R-click mustard</span>
     </div>
-    <p style="font-size:13px;opacity:.6">Stand still and the hot dogs hang in the air. Dodge them, or let the vendors pelt each other.<br>At the end of the pier waits the Big Wiener. Bring condiments.</p>
+    <p style="font-size:13px;opacity:.6">Stand still and the hot dogs hang in the air. When one gets close, time slows: click to smack it back at them.<br>At the end of the pier waits the Big Wiener. Bring condiments.</p>
     <div class="go">CLICK TO START</div>
   </div>
   <div class="card hidden" id="deadCard">
@@ -104,7 +107,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -226,6 +229,67 @@ function noise(dur, vol, rate = 1) {
   const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900 * rate; bp.Q.value = 0.7;
   s.connect(bp).connect(g).connect(AC.destination); s.start();
 }
+// ---------- Music: procedural xylophone beat ----------
+// 16-step sequencer with lookahead scheduling. Xylophone melody over a kick/snare/hat groove and a bass root;
+// a lowpass closes as time slows so the track muffles in slow-mo, and the tempo kicks up in the boss zone.
+const MUSIC = { step: 0, nextT: 0, timer: null, gain: null, lp: null, phrase: null, phraseBar: -1 };
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16];
+const PROG = [0, -3, 5, 7];                       // C, Am, F, G
+const mf = semi => 523.25 * Math.pow(2, semi / 12);
+function noiseAt(t, dur, vol, hp = 2000) {
+  const n = Math.floor(AC.sampleRate * dur), buf = AC.createBuffer(1, n, AC.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp;
+  const g = AC.createGain(); g.gain.value = vol;
+  src.connect(f).connect(g).connect(MUSIC.lp); src.start(t);
+}
+function xylo(t, f, vol = 0.16) {
+  const o = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain(), g2 = AC.createGain();
+  o.type = 'sine'; o.frequency.value = f; o2.type = 'triangle'; o2.frequency.value = f * 3.01; g2.gain.value = 0.22;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+  o.connect(g); o2.connect(g2).connect(g); g.connect(MUSIC.lp);
+  o.start(t); o.stop(t + 0.35); o2.start(t); o2.stop(t + 0.35);
+  noiseAt(t, 0.012, 0.08, 4000);                  // mallet click
+}
+function kick(t) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.11); g.gain.setValueAtTime(0.55, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + 0.22); }
+function snare(t) { noiseAt(t, 0.13, 0.28, 1200); const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(110, t + 0.08); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + 0.12); }
+function bass(t, f, dur) { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g).connect(MUSIC.lp); o.start(t); o.stop(t + dur + 0.02); }
+function makePhrase(density) {
+  // two-bar xylophone phrase: random walk on the pentatonic with octave leaps, built on scale degrees
+  const ph = []; let deg = 3;
+  for (let i = 0; i < 32; i++) {
+    const hit = i % 4 === 0 ? true : Math.random() < density;
+    if (!hit) { ph.push(null); continue; }
+    deg = clamp(deg + pick([-2, -1, -1, 1, 1, 2, 3, -3]), 0, PENTA.length - 1);
+    ph.push(PENTA[deg] + (Math.random() < 0.12 ? 12 : 0));
+  }
+  return ph;
+}
+function scheduleStep(s, t) {
+  const bar = Math.floor(s / 16), i = s % 16, root = PROG[bar % 4], boss = inBossZone;
+  if (Math.floor(bar / 2) !== MUSIC.phraseBar) { MUSIC.phraseBar = Math.floor(bar / 2); MUSIC.phrase = makePhrase(boss ? 0.8 : 0.6); }
+  if (i % 4 === 0) kick(t); if (boss && (i === 6 || i === 14)) kick(t);
+  if (i === 4 || i === 12) snare(t);
+  if (i % 2 === 0) noiseAt(t, 0.03, i % 4 === 2 ? 0.09 : 0.05, 6000);
+  if (i % 4 === 0 || (boss && i % 4 === 2)) bass(t, mf(root - 24), 0.25);
+  const n = MUSIC.phrase[(bar % 2) * 16 + i];
+  if (n !== null) { xylo(t, mf(root + n)); if (i % 8 === 0) xylo(t, mf(root + n + 12), 0.08); }
+}
+function musicStart() {
+  if (!AC || MUSIC.timer) return;
+  MUSIC.lp = AC.createBiquadFilter(); MUSIC.lp.type = 'lowpass'; MUSIC.lp.frequency.value = 8000;
+  MUSIC.gain = AC.createGain(); MUSIC.gain.gain.value = 0.5;
+  MUSIC.lp.connect(MUSIC.gain).connect(AC.destination);
+  MUSIC.nextT = AC.currentTime + 0.1;
+  MUSIC.timer = setInterval(() => {
+    const stepDur = 60 / (inBossZone ? 160 : 138) / 4;
+    while (MUSIC.nextT < AC.currentTime + 0.16) { scheduleStep(MUSIC.step++, MUSIC.nextT); MUSIC.nextT += stepDur; }
+    MUSIC.lp.frequency.setTargetAtTime(380 + 9000 * Math.pow(timeScale, 0.6), AC.currentTime, 0.05);
+    MUSIC.gain.gain.setTargetAtTime(muted ? 0 : (started && !paused ? 0.5 : 0.22), AC.currentTime, 0.1);
+  }, 25);
+}
+
 const SFX = {
   jump: () => tone('sine', 220, 440, 0.12, 0.12),
   punch: () => { tone('square', 120, 40, 0.18, 0.25); noise(0.1, 0.2, 0.6); },
@@ -235,6 +299,7 @@ const SFX = {
   squirt: () => { noise(0.07, 0.14, 2.4); tone('sine', 900, 300, 0.08, 0.08); },
   splat: () => { tone('sine', 260, 70, 0.14, 0.22); noise(0.05, 0.1, 0.8); },
   bossRoar: () => { tone('sawtooth', 70, 40, 0.9, 0.35); noise(0.4, 0.25, 0.25); },
+  smack: () => { tone('square', 500, 120, 0.12, 0.25); noise(0.08, 0.3, 1.6); },
 };
 
 // ---------- World / chunks ----------
@@ -511,16 +576,19 @@ function makeHotDog() {
   g.add(bun, sausage, mustard);
   return g;
 }
+const ringGeo = new THREE.RingGeometry(0.42, 0.56, 28);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xf2b705, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
 function spawnBullet(p, dir, owner, opts = {}) {
   const mesh = makeHotDog();
   const trail = new THREE.Mesh(trailGeo, trailMat);
+  const ring = new THREE.Mesh(ringGeo, ringMat.clone()); scene.add(ring);
   const sc = opts.scale || 1;
   mesh.scale.setScalar(sc); trail.scale.set(sc, sc, 1);
   mesh.position.copy(p); mesh.lookAt(p.clone().add(dir));
   scene.add(mesh, trail);
-  bullets.push({ pos: p.clone(), vel: dir.clone().multiplyScalar(opts.speed || BULLET_SPEED), life: opts.big ? 7 : 5, mesh, trail, owner, r: opts.r || 0.42, big: !!opts.big });
+  bullets.push({ pos: p.clone(), vel: dir.clone().multiplyScalar(opts.speed || BULLET_SPEED), life: opts.big ? 7 : 5, mesh, trail, ring, owner, r: opts.r || 0.42, big: !!opts.big, deflected: false, phase: rand(0, 6.28) });
 }
-function removeBullet(b) { scene.remove(b.mesh, b.trail); }
+function removeBullet(b) { scene.remove(b.mesh, b.trail, b.ring); }
 const fragGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
 const fragMats = [redMat, mustardMat, apronMat, bunMat, sausageMat, new THREE.MeshLambertMaterial({ color: 0xd84a9a })];
 function spawnFrags(x, y, z, n = 12, sc = 1) {
@@ -617,9 +685,9 @@ class Boss {
   }
   hit(kind, point) {
     if (!this.alive) return;
-    const dmg = kind === this.craving ? 3 : 1;
+    const dmg = kind === this.craving ? 3 : kind === 'dog' ? 2 : 1;
     this.hp -= dmg; SFX.splat();
-    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.32 + dmg * 0.06, 8, 6), kind === 'ketchup' ? ketchupMat : mustardLMat);
+    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.32 + dmg * 0.06, 8, 6), kind === 'ketchup' ? ketchupMat : kind === 'dog' ? bunMat : mustardLMat);
     sp.position.copy(this.group.worldToLocal(point.clone())); sp.scale.z = 0.5; sp.scale.multiplyScalar(1.6); this.group.add(sp); this.splats.push(sp);
     if (this.splats.length > 90) this.group.remove(this.splats.shift());
     if (Math.random() < 0.18) yell(this, 'hurt', BOSS_YELLS);
@@ -795,7 +863,7 @@ function resetGame() {
   agents = []; chunkIndex = 0; cursor.x = 0; cursor.y = 0; cursor.z = 0;
   P.pos.set(0, 0.01, 0); P.vel.set(0, 0, 0); P.yaw = 0; P.pitch = 0; P.roll = 0;
   P.alive = true; P.grounded = true; P.eye = 1.55; P.slide = 0; P.wallRun = 0; P.punchT = 1;
-  distance = 0; kills = 0; timeScale = 0.03;
+  distance = 0; kills = 0; timeScale = 0.03; smacks = 0; danger = false;
   while (chunks.length < 6) genChunk();
 }
 
@@ -918,6 +986,42 @@ function updatePlayer(dt) {
   camera.fov += ((sliding ? 92 : wallRunning ? 88 : 82) - camera.fov) * Math.min(1, dt * 8); camera.updateProjectionMatrix();
 }
 
+const SMACK_RANGE = 4.2;
+let danger = false, smacks = 0;
+// a hot dog is "in danger range" when it's close and heading toward you — time slows, and a click smacks it away
+function dogInRange(b, eye) {
+  const d = b.pos.distanceTo(eye);
+  return d < SMACK_RANGE + b.r && tmpD.copy(eye).sub(b.pos).dot(b.vel) > 0;
+}
+function smack() {
+  if (!P.alive || P.punchT < 0.25) return false;
+  const fwd = tmpA.set(-Math.sin(P.yaw) * Math.cos(P.pitch), Math.sin(P.pitch), -Math.cos(P.yaw) * Math.cos(P.pitch));
+  const eye = tmpB.set(P.pos.x, P.pos.y + P.eye, P.pos.z);
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    if (b.deflected) continue;
+    const to = tmpC.copy(b.pos).sub(eye), d = to.length();
+    if (d > SMACK_RANGE + b.r || to.normalize().dot(fwd) < 0.35) continue;
+    P.punchT = 0; smacks++; SFX.smack();
+    if (b.big) { spawnFrags(b.pos.x, b.pos.y, b.pos.z, 18, 1.8); removeBullet(b); bullets.splice(i, 1); }
+    else {
+      // send it back as your projectile: at a vendor in your look cone if there is one, else at where you're looking
+      let target = tmpD.copy(eye).addScaledVector(fwd, 30), bestDot = 0.88;
+      for (const a of agents) {
+        if (!a.alive) continue;
+        const ta = new THREE.Vector3(a.pos.x, a.pos.y + 0.9, a.pos.z), dot = ta.clone().sub(eye).normalize().dot(fwd);
+        if (dot > bestDot) { bestDot = dot; target = ta; }
+      }
+      const flight = target.distanceTo(b.pos) / 38;
+      b.vel.copy(target).sub(b.pos).normalize().multiplyScalar(38); b.vel.y += 0.5 * BULLET_G * flight;   // gravity compensation
+      b.owner = null; b.deflected = true; b.life = 4;
+      b.ring.material.color.set(0x3b7dd8);
+    }
+    return true;
+  }
+  return false;
+}
+
 function punch() {
   if (!P.alive || P.punchT < 0.35) return;
   P.punchT = 0;
@@ -985,7 +1089,11 @@ function updateWorld(wdt) {
     b.vel.y -= BULLET_G * wdt; b.pos.addScaledVector(b.vel, wdt); b.life -= wdt;
     let dead = b.life <= 0 || b.pos.y < -30;
     // player hit (3 sample points on the capsule)
-    if (!dead && P.alive) {
+    if (!dead && b.deflected && boss && boss.alive) {
+      const bx = boss.pos.x, bz = boss.pos.z, by = boss.group.position.y;
+      if (segPointDist2(bx, by + 1 * BOSS_SCALE, bz, bx, by + 7.6 * BOSS_SCALE, bz, b.pos.x, b.pos.y, b.pos.z) < (2.4 * BOSS_SCALE) ** 2) { boss.hit('dog', b.pos); dead = true; }
+    }
+    if (!dead && P.alive && !b.deflected) {
       for (const py of [P.pos.y + 0.45, P.pos.y + 1.0, P.pos.y + P.eye]) {
         if (segPointDist2(ox, oy, oz, b.pos.x, b.pos.y, b.pos.z, px, py, pz) < b.r * b.r) { die(); dead = true; break; }
       }
@@ -1027,8 +1135,12 @@ function tick(dt) {
   if (P.alive) {
     updatePlayer(dt);
     const hs = Math.hypot(P.vel.x, P.vel.z);
-    const target = won ? 0.35 : clamp(0.03 + Math.max(hs / RUN, Math.abs(P.vel.y) / 11, Math.min(1, lookSpeed / 5) * 0.45, P.punchT < 0.3 || kickL > 0.5 || kickR > 0.5 ? 0.5 : 0), 0.03, 1);
-    timeScale += (target - timeScale) * Math.min(1, dt * (target > timeScale ? 14 : 7));
+    let target = won ? 0.35 : clamp(0.03 + Math.max(hs / RUN, Math.abs(P.vel.y) / 11, Math.min(1, lookSpeed / 5) * 0.45, P.punchT < 0.3 || kickL > 0.5 || kickR > 0.5 ? 0.5 : 0), 0.03, 1);
+    // proximity slow-mo: an incoming hot dog within smack range drags time down so you can bat it away
+    const eyeV = tmpB.set(P.pos.x, P.pos.y + P.eye, P.pos.z);
+    danger = false; for (const b of bullets) if (!b.deflected && dogInRange(b, eyeV)) { danger = true; break; }
+    if (danger) { target = Math.min(target, 0.16); timeScale = Math.min(timeScale, 0.3); }   // snap in, then settle
+    timeScale += (target - timeScale) * Math.min(1, dt * (target > timeScale ? 14 : danger ? 30 : 7));
     distance = Math.max(distance, Math.floor(-P.pos.z));
   } else {
     timeScale += (0.12 - timeScale) * Math.min(1, dt * 5);
@@ -1039,16 +1151,26 @@ function tick(dt) {
   updateFist();
   updateGuns(dt);
   updateYells(dt);
+  // pulsing rings around every hot dog (real time, so they keep pulsing when time is frozen); red when smackable
+  const eyeR = tmpB.set(P.pos.x, P.pos.y + P.eye, P.pos.z), tnow = performance.now() / 1000;
+  for (const b of bullets) {
+    b.ring.position.copy(b.pos); b.ring.quaternion.copy(camera.quaternion);
+    const near = !b.deflected && dogInRange(b, eyeR);
+    b.ring.scale.setScalar((b.big ? 4.5 : 1) * (1 + 0.28 * Math.sin(tnow * (near ? 16 : 7) + b.phase)));
+    if (!b.deflected) b.ring.material.color.set(near ? 0xd83a1e : 0xf2b705);
+    b.ring.material.opacity = 0.55 + 0.35 * Math.sin(tnow * 9 + b.phase);
+  }
+  document.getElementById('smackHint').classList.toggle('hidden', !(danger && P.alive && smacks < 6));
   if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) document.getElementById('banner').style.opacity = 0; }
 
   sun.position.set(P.pos.x + 30, P.pos.y + 55, P.pos.z + 25); sun.target.position.copy(P.pos);
   distEl.textContent = distance; killsEl.textContent = kills;
   tfill.style.transform = 'scaleX(' + timeScale.toFixed(3) + ')';
-  if (droneGain) { droneGain.gain.value = muted ? 0 : 0.03 + timeScale * 0.05; droneOsc.frequency.value = 28 + 80 * timeScale; }
+  if (droneGain) { droneGain.gain.value = muted ? 0 : 0.01 + timeScale * 0.02; droneOsc.frequency.value = 28 + 80 * timeScale; }
 }
 resetGame();
 requestAnimationFrame(frame);
-window.__T = { P, keys, camera, fist, scene, renderer, sun, fireGun, tick, get boss() { return boss; }, get shots() { return shots; }, get inBossZone() { return inBossZone; }, get won() { return won; }, get boxes() { return boxes; }, get chunks() { return chunks; }, get ts() { return timeScale; }, get agents() { return agents; }, get bullets() { return bullets; }, get started() { return started; }, get paused() { return paused; } };
+window.__T = { P, keys, camera, fist, scene, renderer, sun, fireGun, tick, smack, get danger() { return danger; }, get smacks() { return smacks; }, get boss() { return boss; }, get shots() { return shots; }, get inBossZone() { return inBossZone; }, get won() { return won; }, get boxes() { return boxes; }, get chunks() { return chunks; }, get ts() { return timeScale; }, get agents() { return agents; }, get bullets() { return bullets; }, get started() { return started; }, get paused() { return paused; } };
 
 // ---------- Input ----------
 const overlay = document.getElementById('overlay');
@@ -1071,7 +1193,7 @@ function updateLockHint() {
   lockHint.classList.toggle('hidden', pointerLockOK || !started || paused || isTouch);
 }
 overlay.addEventListener('click', () => {
-  initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+  initAudio(); if (AC && AC.state === 'suspended') AC.resume(); musicStart();
   if (!P.alive || won) { resetGame(); document.getElementById('vig').style.opacity = 0; }
   started = true; paused = false;
   overlay.classList.add('hidden');
@@ -1099,8 +1221,8 @@ addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 canvas.addEventListener('mousedown', e => {
   if (!started || paused) return;
-  if (e.button === 0) { if (!fireGun('ketchup')) punch(); if (!pointerLockOK) lockPointer(); }
-  if (e.button === 2) fireGun('mustard');
+  if (e.button === 0) { if (!smack() && !fireGun('ketchup')) punch(); if (!pointerLockOK) lockPointer(); }
+  if (e.button === 2) { if (!smack()) fireGun('mustard'); }
 });
 // mouse-look is always live while playing; pointer lock just keeps the cursor captured
 addEventListener('mousemove', e => {
@@ -1142,7 +1264,7 @@ const touchEnd = e => {
 };
 canvas.addEventListener('touchend', touchEnd); canvas.addEventListener('touchcancel', touchEnd);
 document.getElementById('bJump').addEventListener('touchstart', e => { P.jumpBuf = 0.15; e.preventDefault(); }, { passive: false });
-document.getElementById('bPunch').addEventListener('touchstart', e => { if (!fireGun('ketchup')) punch(); e.preventDefault(); }, { passive: false });
+document.getElementById('bPunch').addEventListener('touchstart', e => { if (!smack() && !fireGun('ketchup')) punch(); e.preventDefault(); }, { passive: false });
 document.getElementById('bMust').addEventListener('touchstart', e => { fireGun('mustard'); e.preventDefault(); }, { passive: false });
 </script>
 </body>

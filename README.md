@@ -4,8 +4,11 @@ An HTML5 first-person parkour game, deployed on Cloudflare Pages and embedded (i
 
 A seaside carnival boardwalk where time only moves when you do. The hot dog vendors have had enough:
 they wind up (a mustard telegraph line), hurl hot dogs, and the hot dogs hang in the air while you stand still.
-Run, jump, slide, mantle and wall-run down the endless pier; dodge the dogs, shove vendors at arm's reach,
-or let them pelt each other. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
+Run, jump, slide, mantle and wall-run down the pier; dodge the dogs, shove vendors at arm's reach,
+or let them pelt each other. Every hot dog carries a pulsing ring (red once it's in reach). When one gets close,
+time snaps into slow-mo and a click **smacks** it back toward whatever you're looking at — vendors, or the boss.
+A procedural xylophone track (16-step sequencer, kick/snare/hat, bass) plays throughout; it muffles as time slows
+and speeds up in the boss zone. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
 scale with a synth harmony underneath); only vendors within ~24 m are audible.
 
 **The Big Wiener** — a ~180 m hot dog standing in the sea at the end of the pier — is visible from the moment you spawn
@@ -25,7 +28,7 @@ Condiments also knock hot dogs — even the giant ones — out of the air. Beat 
 | Mouse | look (pointer lock) |
 | Space | jump, wall-jump |
 | Shift | slide |
-| Click | shove a vendor (ketchup gun in the arena) |
+| Click | smack a close hot dog · shove a vendor · ketchup gun in the arena |
 | Right click / E | mustard gun (arena only) |
 | Air + wall + forward | wall-run |
 | M | mute |
