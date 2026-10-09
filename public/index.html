@@ -3,27 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.0.1">
-<title>TEMPO</title>
+<meta name="version" content="1.1.0">
+<title>Hot Dog Dash</title>
 <style>
-  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#e8ebef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
   #c { display:block; width:100%; height:100%; touch-action:none; }
-  #hud { position:absolute; inset:0; pointer-events:none; color:#111; }
+  #hud { position:absolute; inset:0; pointer-events:none; color:#2a1a0e; text-shadow:0 1px 0 rgba(255,255,255,.5); }
   #hud .tl { position:absolute; top:14px; left:16px; font-weight:800; font-size:22px; letter-spacing:1px; }
   #hud .tl small { display:block; font-size:12px; font-weight:600; opacity:.65; letter-spacing:2px; }
   #hud .tr { position:absolute; top:14px; right:16px; text-align:right; font-weight:700; font-size:14px; opacity:.7; letter-spacing:1px; }
   #xh { position:absolute; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:#111; box-shadow:0 0 0 2px rgba(255,255,255,.8); }
   #tbar { position:absolute; left:50%; bottom:26px; width:180px; height:6px; margin-left:-90px; background:rgba(0,0,0,.12); border-radius:3px; overflow:hidden; }
-  #tfill { height:100%; width:100%; background:#d81b2a; transform-origin:left; }
+  #tfill { height:100%; width:100%; background:linear-gradient(90deg,#f2b705,#d83a1e); transform-origin:left; }
   #tlabel { position:absolute; left:50%; bottom:36px; transform:translateX(-50%); font-size:10px; font-weight:700; letter-spacing:3px; opacity:.55; }
   #lockHint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:10px; font-weight:700; letter-spacing:2px; opacity:.55; }
   #ver { position:absolute; right:10px; bottom:8px; font-size:11px; opacity:.45; font-weight:600; }
-  #vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(216,27,42,0) 55%, rgba(216,27,42,.55) 100%); opacity:0; transition:opacity .15s; }
-  #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(232,235,239,.92); cursor:pointer; }
-  #overlay .card { text-align:center; color:#111; max-width:520px; padding:24px; }
-  #overlay h1 { font-size:72px; margin:0; letter-spacing:12px; font-weight:900; }
-  #overlay h1 span { color:#d81b2a; }
-  #overlay h2 { font-size:40px; margin:0 0 8px; letter-spacing:6px; font-weight:900; color:#d81b2a; }
+  #vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(242,183,5,0) 50%, rgba(216,58,30,.6) 100%); opacity:0; transition:opacity .15s; }
+  #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:repeating-linear-gradient(90deg, rgba(255,250,240,.94) 0 40px, rgba(255,214,214,.94) 40px 80px); cursor:pointer; }
+  #overlay .card { text-align:center; color:#2a1a0e; max-width:560px; padding:24px; }
+  #overlay h1 { font-size:56px; margin:0; letter-spacing:8px; font-weight:900; }
+  #overlay h1 span { color:#d83a1e; }
+  #overlay h1 em { font-style:normal; color:#f2b705; }
+  #overlay h2 { font-size:40px; margin:0 0 8px; letter-spacing:6px; font-weight:900; color:#d83a1e; }
   #overlay p { margin:8px 0; font-size:15px; line-height:1.5; opacity:.8; }
   #overlay .keys { display:inline-grid; grid-template-columns:auto auto; gap:4px 16px; text-align:left; font-size:14px; margin:12px 0; }
   #overlay .keys b { font-weight:800; }
@@ -43,33 +44,33 @@
 <canvas id="c"></canvas>
 <div id="hud">
   <div id="vig"></div>
-  <div class="tl"><small>DISTANCE</small><span id="dist">0</span> m<small style="margin-top:6px">KILLS</small><span id="kills">0</span></div>
+  <div class="tl"><small>DISTANCE</small><span id="dist">0</span> m<small style="margin-top:6px">SHOVES</small><span id="kills">0</span></div>
   <div class="tr">BEST <span id="best">0</span> m</div>
   <div id="xh"></div>
-  <div id="tlabel">TEMPO</div>
+  <div id="tlabel">BOARDWALK TIME</div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.0.1</div>
+  <div id="ver">v1.1.0</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
-  <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">PUNCH</div></div>
+  <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div></div>
 </div>
 <div id="overlay">
   <div class="card" id="startCard">
-    <h1>TEM<span>PO</span></h1>
-    <p>Time only moves when you move.<br>Agents have been assigned to eliminate you. Keep running.</p>
+    <h1>HOT <span>DOG</span> <em>DASH</em></h1>
+    <p>The boardwalk only moves when you do.<br>The hot dog vendors have had enough of you. Run the pier.</p>
     <div class="keys">
       <b>WASD</b><span>move</span>
       <b>Mouse</b><span>look</span>
       <b>Space</b><span>jump &middot; wall-jump</span>
       <b>Shift</b><span>slide</span>
-      <b>Click</b><span>punch an agent</span>
+      <b>Click</b><span>shove a vendor</span>
       <b>Air + wall</b><span>wall-run</span>
     </div>
-    <p style="font-size:13px;opacity:.6">Stand still and bullets crawl. Dodge them, or let the agents shoot each other.</p>
+    <p style="font-size:13px;opacity:.6">Stand still and the hot dogs hang in the air. Dodge them, or let the vendors pelt each other.</p>
     <div class="go">CLICK TO START</div>
   </div>
   <div class="card hidden" id="deadCard">
-    <h2>ELIMINATED</h2>
-    <p><span id="dDist">0</span> m &middot; <span id="dKills">0</span> kills</p>
+    <h2>SAUCED</h2>
+    <p><span id="dDist">0</span> m of pier &middot; <span id="dKills">0</span> vendors shoved</p>
     <p id="dBest" style="font-weight:800"></p>
     <div class="go">CLICK TO RETRY</div>
   </div>
@@ -83,7 +84,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.0.1';
+const VERSION = '1.1.0';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -93,33 +94,54 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe8ebef);
-scene.fog = new THREE.Fog(0xe8ebef, 35, 150);
+scene.background = new THREE.Color(0x9fd8ef);
+scene.fog = new THREE.Fog(0xbfe6f5, 45, 170);
 const camera = new THREE.PerspectiveCamera(82, 1, 0.1, 400);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8f98a8, 0.95));
-const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+scene.add(new THREE.HemisphereLight(0xdff3ff, 0xd9b27a, 0.9));
+const sun = new THREE.DirectionalLight(0xfff2d0, 1.4);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 200 });
 sun.shadow.bias = -0.0005;
 scene.add(sun, sun.target);
 
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ color: 0xc9ced6 }));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ color: 0x3f9ec4 }));   // the sea under the pier
 ground.rotation.x = -Math.PI / 2; ground.position.y = -30; ground.receiveShadow = true;
 scene.add(ground);
 
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const unitEdges = new THREE.EdgesGeometry(unitBox);
-const edgeMat = new THREE.LineBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.55 });
-const platMat = new THREE.MeshLambertMaterial({ color: 0xf6f6f6 });
-const crateMat = new THREE.MeshLambertMaterial({ color: 0xdfe3e8 });
-const wallMat = new THREE.MeshLambertMaterial({ color: 0xeceff2 });
-const decoMat = new THREE.MeshLambertMaterial({ color: 0xd4d9e0 });
-const redMat = new THREE.MeshLambertMaterial({ color: 0xd81b2a });
-const darkMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x3a2410, transparent: true, opacity: 0.35 });
+// world-space stripe shaders: planks along the pier, candy stripes on tents and walls
+function striped(mat, glsl) {
+  mat.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP = (modelMatrix * vec4(position, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + glsl);
+  };
+  return mat;
+}
+const PLANKS = 'float pl = fract(vWP.x * 2.2); float seam = smoothstep(0.0, 0.07, pl) * smoothstep(1.0, 0.93, pl); float grain = 0.93 + 0.07 * sin(vWP.z * 9.0 + floor(vWP.x * 2.2) * 2.7); diffuseColor.rgb *= mix(0.45, 1.0, seam) * grain;';
+const STRIPES = 'float st = step(0.5, fract(vWP.x * 0.6 + vWP.z * 0.15)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.97, 0.9), st);';
+const platMat = striped(new THREE.MeshLambertMaterial({ color: 0xc08a4e }), PLANKS);
+const crateMat = striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), STRIPES);      // striped vendor stands / barriers
+const wallMat = striped(new THREE.MeshLambertMaterial({ color: 0x2f6fb5 }), STRIPES);       // big-top tent walls
+const tentMats = [0xd83a1e, 0x2f6fb5, 0xf2b705, 0x5aa84a, 0xd84a9a].map(c => striped(new THREE.MeshLambertMaterial({ color: c }), STRIPES));
+const roofMat = new THREE.MeshLambertMaterial({ color: 0xfff3dc });
+const metalMat = new THREE.MeshLambertMaterial({ color: 0xe8e8e8 });
+const redMat = new THREE.MeshLambertMaterial({ color: 0xd83a1e });
+const darkMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+const skinMat = new THREE.MeshLambertMaterial({ color: 0xf1c6a0 });
+const apronMat = new THREE.MeshLambertMaterial({ color: 0xfafafa });
+const bunMat = new THREE.MeshLambertMaterial({ color: 0xe0a860 });
+const sausageMat = new THREE.MeshLambertMaterial({ color: 0xb8402a });
+const mustardMat = new THREE.MeshBasicMaterial({ color: 0xf2b705 });
 
 function resize() {
   const w = innerWidth, h = innerHeight;
@@ -291,51 +313,99 @@ function genChunk() {
   c.x += rand(-2.5, 2.5);
   c.y = clamp(c.y + (Math.random() < 0.5 ? -rand(1, 3) : rand(0, maxUp)), -5, 9);
 
-  // distant city decoration (non-colliding)
+  // carnival decoration along the shore (non-colliding)
   for (let k = 0; k < 3; k++) {
     const side = Math.random() < 0.5 ? 1 : -1;
-    addBox(ch, c.x + side * rand(24, 60), -30, ch.zStart - rand(0, ch.zStart - c.z), rand(8, 18), rand(8, 40), rand(8, 18), decoMat, false);
+    addTent(ch, c.x + side * rand(22, 55), ch.zStart - rand(0, ch.zStart - c.z), rand(5, 10), rand(6, 14));
   }
+  if (i % 5 === 2) addWheel(ch, c.x + (Math.random() < 0.5 ? -1 : 1) * rand(40, 60), ch.zStart - 10, rand(14, 22));
+  for (let k = 0; k < 2; k++) addPiling(ch, c.x + rand(-6, 6), ch.zStart - rand(2, ch.zStart - c.z - 2));
   for (const s of spots) { const a = new Agent(s, d); ch.agents.push(a); agents.push(a); ch.group.add(a.group); }
   ch.zEnd = c.z;
   chunks.push(ch);
   rebuildBoxes();
+}
+const coneGeo = new THREE.ConeGeometry(1, 1, 12);
+const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 12);
+const wheels = [];
+function addTent(ch, x, z, r, h) {
+  const mat = pick(tentMats);
+  const wall = new THREE.Mesh(cylGeo, mat); wall.position.set(x, -30 + h / 2, z); wall.scale.set(r, h, r);
+  const roof = new THREE.Mesh(coneGeo, roofMat); roof.position.set(x, -30 + h + r * 0.45, z); roof.scale.set(r * 1.15, r * 0.9, r * 1.15);
+  const flag = new THREE.Mesh(unitBox, redMat); flag.position.set(x + 0.3, -30 + h + r * 0.9 + 0.3, z); flag.scale.set(0.8, 0.5, 0.05);
+  ch.group.add(wall, roof, flag);
+}
+function addWheel(ch, x, z, r) {
+  const g = new THREE.Group(); g.position.set(x, -30 + r + 4, z);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.35, 8, 40), metalMat);
+  const hub = new THREE.Group();
+  for (let k = 0; k < 10; k++) {
+    const sp = new THREE.Mesh(unitBox, metalMat); sp.scale.set(0.25, r * 2, 0.25); sp.rotation.z = k * Math.PI / 10; hub.add(sp);
+  }
+  for (let k = 0; k < 10; k++) {
+    const cab = new THREE.Mesh(unitBox, pick(tentMats)); const a = k * Math.PI * 2 / 10;
+    cab.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); cab.scale.set(1.8, 1.4, 1.4); hub.add(cab);
+  }
+  hub.add(ring); g.add(hub);
+  const legL = new THREE.Mesh(unitBox, metalMat); legL.position.set(-r * 0.5, -(r + 4) / 2, 0); legL.scale.set(0.5, r + 4, 0.5); legL.rotation.z = 0.35;
+  const legR = legL.clone(); legR.position.x = r * 0.5; legR.rotation.z = -0.35;
+  g.add(legL, legR);
+  ch.group.add(g); wheels.push({ hub, ch });
+}
+function addPiling(ch, x, z) {
+  const m = new THREE.Mesh(cylGeo, darkMat); m.position.set(x, -18, z); m.scale.set(0.35, 24, 0.35); ch.group.add(m);
 }
 function rebuildBoxes() { boxes = []; for (const ch of chunks) boxes.push(...ch.boxes); }
 function dropChunk(ch) {
   scene.remove(ch.group);
   for (const a of ch.agents) a.dispose();
   agents = agents.filter(a => !ch.agents.includes(a));
+  for (let i = wheels.length - 1; i >= 0; i--) if (wheels[i].ch === ch) wheels.splice(i, 1);
   chunks.splice(chunks.indexOf(ch), 1);
   rebuildBoxes();
 }
 
 // ---------- Agents ----------
-const capGeo = new THREE.CapsuleGeometry(0.28, 0.95, 4, 10);
+const capGeo = new THREE.CapsuleGeometry(0.28, 0.75, 4, 10);
 const headGeo = new THREE.SphereGeometry(0.2, 12, 10);
-const gunGeo = new THREE.BoxGeometry(0.1, 0.12, 0.5);
-const telMat = new THREE.LineBasicMaterial({ color: 0xd81b2a, transparent: true, opacity: 0 });
+const armGeo = new THREE.BoxGeometry(0.12, 0.12, 0.55);
+const hatMat = striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), 'float hs = step(0.5, fract(vWP.y * 8.0)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), hs);');
+const telMat = new THREE.LineBasicMaterial({ color: 0xf2b705, transparent: true, opacity: 0 });
+const umbMat = striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), STRIPES);
 class Agent {
   constructor([x, y, z], d) {
     this.pos = new THREE.Vector3(x, y, z);
     this.alive = true; this.d = d;
     this.aim = 0; this.aimTime = clamp(2.4 - d * 1.2, 1.1, 2.4) * rand(0.85, 1.15);
     this.group = new THREE.Group(); this.group.position.copy(this.pos);
-    const body = new THREE.Mesh(capGeo, redMat); body.position.y = 0.75; body.castShadow = true;
-    const head = new THREE.Mesh(headGeo, redMat); head.position.y = 1.55; head.castShadow = true;
-    this.gun = new THREE.Mesh(gunGeo, darkMat); this.gun.position.set(0.3, 1.2, -0.3);
-    this.group.add(body, head, this.gun);
+    // vendor: striped shirt body, white apron, paper hat, throwing arm; stands behind a cart with an umbrella
+    const body = new THREE.Mesh(capGeo, striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), 'float hs = step(0.5, fract(vWP.y * 6.0)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), hs);')); body.position.y = 0.85; body.castShadow = true;
+    const apron = new THREE.Mesh(unitBox, apronMat); apron.position.set(0, 0.7, -0.2); apron.scale.set(0.45, 0.7, 0.12);
+    const legs = new THREE.Mesh(unitBox, darkMat); legs.position.y = 0.25; legs.scale.set(0.4, 0.5, 0.3);
+    const head = new THREE.Mesh(headGeo, skinMat); head.position.y = 1.5; head.castShadow = true;
+    const hat = new THREE.Mesh(cylGeo, hatMat); hat.position.y = 1.72; hat.scale.set(0.17, 0.22, 0.17);
+    this.gun = new THREE.Mesh(armGeo, skinMat); this.gun.position.set(0.3, 1.25, -0.25);
+    const held = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.25, 3, 6), sausageMat); held.rotation.z = Math.PI / 2; held.position.set(0, 0.06, -0.3); this.gun.add(held);
+    const cart = new THREE.Mesh(unitBox, metalMat); cart.position.set(0, 0.45, -0.95); cart.scale.set(1.3, 0.8, 0.7);
+    const cartTop = new THREE.Mesh(unitBox, striped(new THREE.MeshLambertMaterial({ color: 0xd83a1e }), STRIPES)); cartTop.position.set(0, 0.9, -0.95); cartTop.scale.set(1.35, 0.12, 0.75);
+    const pole = new THREE.Mesh(cylGeo, darkMat); pole.position.set(0.5, 1.5, -0.95); pole.scale.set(0.03, 1.4, 0.03);
+    const umb = new THREE.Mesh(coneGeo, umbMat); umb.position.set(0.5, 2.25, -0.95); umb.scale.set(1.2, 0.35, 1.2);
+    for (const wx of [-0.5, 0.5]) { const wh = new THREE.Mesh(cylGeo, darkMat); wh.rotation.z = Math.PI / 2; wh.position.set(wx, 0.2, -0.95); wh.scale.set(0.2, 0.08, 0.2); this.group.add(wh); }
+    cart.castShadow = true;
+    this.group.add(body, apron, legs, head, hat, this.gun, cart, cartTop, pole, umb);
     this.tel = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), telMat.clone());
     scene.add(this.tel);
   }
-  gunWorld(out) { return out.set(0.3, 1.2, -0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.group.rotation.y).add(this.pos); }
+  gunWorld(out) { return out.set(0.3, 1.25, -0.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.group.rotation.y).add(this.pos); }
   update(wdt) {
     if (!this.alive) return;
     const eye = tmpA.set(P.pos.x, P.pos.y + P.eye, P.pos.z);
     const dx = eye.x - this.pos.x, dz = eye.z - this.pos.z;
     const dist = Math.hypot(dx, eye.y - this.pos.y - 1.2, dz);
     this.group.rotation.y = Math.atan2(-dx, -dz) + Math.PI;
-    this.gun.rotation.x = -Math.atan2(eye.y - this.pos.y - 1.2, Math.hypot(dx, dz));
+    // wind-up: arm swings up and back as the throw charges, then snaps forward
+    const wind = clamp(this.aim / this.aimTime, 0, 1);
+    this.gun.rotation.x = -Math.atan2(eye.y - this.pos.y - 1.2, Math.hypot(dx, dz)) - wind * 1.6;
     const g = this.gunWorld(tmpB);
     let los = dist < 75 && dist > 1.2;
     if (los) { const a = [g.x, g.y, g.z], b = [eye.x, eye.y, eye.z]; for (const bx of boxes) if (segHitsBox(a, b, bx)) { los = false; break; } }
@@ -370,12 +440,21 @@ class Agent {
 
 // ---------- Bullets & fragments ----------
 const BULLET_SPEED = 30;
-const bulletGeo = new THREE.BoxGeometry(0.08, 0.08, 0.55);
-const bulletMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-const trailGeo = new THREE.BoxGeometry(0.04, 0.04, 1);
-const trailMat = new THREE.MeshBasicMaterial({ color: 0xd81b2a, transparent: true, opacity: 0.35 });
+const bunGeo = new THREE.CapsuleGeometry(0.1, 0.34, 3, 8);
+const sausageGeo = new THREE.CapsuleGeometry(0.06, 0.42, 3, 8);
+const trailGeo = new THREE.BoxGeometry(0.05, 0.05, 1);
+const trailMat = new THREE.MeshBasicMaterial({ color: 0xf2b705, transparent: true, opacity: 0.3 });
+function makeHotDog() {
+  const g = new THREE.Group();
+  const bun = new THREE.Mesh(bunGeo, bunMat); bun.rotation.x = Math.PI / 2;
+  const sausage = new THREE.Mesh(sausageGeo, sausageMat); sausage.rotation.x = Math.PI / 2; sausage.position.y = 0.08;
+  const mustard = new THREE.Mesh(unitBox, mustardMat); mustard.position.y = 0.15; mustard.scale.set(0.03, 0.02, 0.4);
+  bun.castShadow = sausage.castShadow = true;
+  g.add(bun, sausage, mustard);
+  return g;
+}
 function spawnBullet(p, dir, owner) {
-  const mesh = new THREE.Mesh(bulletGeo, bulletMat);
+  const mesh = makeHotDog();
   const trail = new THREE.Mesh(trailGeo, trailMat);
   mesh.position.copy(p); mesh.lookAt(p.clone().add(dir));
   scene.add(mesh, trail);
@@ -383,9 +462,11 @@ function spawnBullet(p, dir, owner) {
 }
 function removeBullet(b) { scene.remove(b.mesh, b.trail); }
 const fragGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+const fragMats = [redMat, mustardMat, apronMat, bunMat, sausageMat, new THREE.MeshLambertMaterial({ color: 0xd84a9a })];
 function spawnFrags(x, y, z) {
-  for (let i = 0; i < 10; i++) {
-    const m = new THREE.Mesh(fragGeo, redMat); m.position.set(x, y + rand(-0.6, 0.6), z); m.castShadow = true;
+  // the vendor's stand goes flying: confetti, buns, sausages
+  for (let i = 0; i < 12; i++) {
+    const m = i < 3 ? makeHotDog() : new THREE.Mesh(fragGeo, pick(fragMats)); m.position.set(x, y + rand(-0.6, 0.6), z); m.castShadow = true;
     scene.add(m);
     frags.push({ mesh: m, vel: new THREE.Vector3(rand(-4, 4), rand(1, 7), rand(-4, 4)), rot: new THREE.Vector3(rand(-5, 5), rand(-5, 5), rand(-5, 5)), life: 2.5 });
   }
@@ -566,14 +647,14 @@ function updateFist() {
 
 // ---------- Game state ----------
 let timeScale = 0.03, distance = 0, kills = 0, best = 0, started = false, paused = false;
-try { best = +localStorage.getItem('tempo_best') || 0; } catch (e) {}
+try { best = +localStorage.getItem('hotdog_best') || 0; } catch (e) {}
 document.getElementById('best').textContent = best;
 
 function die() {
   if (!P.alive) return;
   P.alive = false; SFX.death();
   document.getElementById('vig').style.opacity = 1;
-  if (distance > best) { best = distance; try { localStorage.setItem('tempo_best', best); } catch (e) {} }
+  if (distance > best) { best = distance; try { localStorage.setItem('hotdog_best', best); } catch (e) {} }
   document.getElementById('dDist').textContent = distance;
   document.getElementById('dKills').textContent = kills;
   document.getElementById('dBest').textContent = distance >= best && distance > 0 ? 'NEW BEST' : 'BEST ' + best + ' m';
@@ -608,10 +689,11 @@ function updateWorld(wdt) {
     }
     if (!dead) for (const bx of boxes) if (pointInBox(b.pos.x, b.pos.y, b.pos.z, bx)) { dead = true; break; }
     if (dead) { removeBullet(b); bullets.splice(i, 1); continue; }
-    b.mesh.position.copy(b.pos);
+    b.mesh.position.copy(b.pos); b.mesh.rotateX(wdt * 12);   // end-over-end tumbling hot dog
     const tl = Math.min(b.life > 4.6 ? (5 - b.life) * BULLET_SPEED : 10, 10);
     b.trail.scale.z = tl; b.trail.position.copy(b.pos).addScaledVector(b.vel, -tl / 2 / BULLET_SPEED); b.trail.quaternion.copy(b.mesh.quaternion);
   }
+  for (const w of wheels) w.hub.rotation.z += wdt * 0.25;
   // fragments
   for (let i = frags.length - 1; i >= 0; i--) {
     const f = frags[i];

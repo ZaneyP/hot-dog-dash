@@ -1,8 +1,8 @@
-// Cloudflare Pages config for TEMPO (HTML5 game, embedded via iframe on another site).
+// Cloudflare Pages config for Hot Dog Dash (HTML5 game, embedded via iframe on another site).
 // Deploy with: npx wrangler pages deploy
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "tempo-parkour",
+  "name": "hot-dog-dash",
   "compatibility_date": "2026-10-01",
   "pages_build_output_dir": "./public"
 }

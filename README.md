@@ -1,11 +1,11 @@
-# TEMPO
+# Hot Dog Dash
 
 An HTML5 first-person parkour game, deployed on Cloudflare Pages and embedded (iframe) into another website.
 
-Time only moves when you move. Special agents have been assigned to eliminate you: they take aim
-(a red telegraph line), fire, and their bullets crawl through the air while you stand still. Run,
-jump, slide, mantle and wall-run across endless rooftops; dodge the shots, punch agents at arm's
-reach, or let them shoot each other. Score is distance travelled.
+A seaside carnival boardwalk where time only moves when you do. The hot dog vendors have had enough:
+they wind up (a mustard telegraph line), hurl hot dogs, and the hot dogs hang in the air while you stand still.
+Run, jump, slide, mantle and wall-run down the endless pier; dodge the dogs, shove vendors at arm's reach,
+or let them pelt each other. Score is distance travelled.
 
 - `public/index.html` — the entire game (no build step; Three.js is loaded from a CDN)
 - `wrangler.jsonc` — Cloudflare Pages config (`pages_build_output_dir: ./public`)
@@ -18,7 +18,7 @@ reach, or let them shoot each other. Score is distance travelled.
 | Mouse | look (pointer lock) |
 | Space | jump, wall-jump |
 | Shift | slide |
-| Click | punch |
+| Click | shove a vendor |
 | Air + wall + forward | wall-run |
 | M | mute |
 
