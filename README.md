@@ -5,7 +5,13 @@ An HTML5 first-person parkour game, deployed on Cloudflare Pages and embedded (i
 A seaside carnival boardwalk where time only moves when you do. The hot dog vendors have had enough:
 they wind up (a mustard telegraph line), hurl hot dogs, and the hot dogs hang in the air while you stand still.
 Run, jump, slide, mantle and wall-run down the endless pier; dodge the dogs, shove vendors at arm's reach,
-or let them pelt each other. Score is distance travelled.
+or let them pelt each other. Vendors yell at you in autotune (word-by-word speech synthesis snapped to a pentatonic
+scale with a synth harmony underneath); only vendors within ~24 m are audible.
+
+At the end of the pier (chunk 22, roughly 550 m) is the arena and **The Big Wiener**: a giant hot dog who lobs
+giant hot dogs. In the arena you get a ketchup gun (left click / Q) and a mustard gun (right click / E). The boss
+alternates which condiment it "wants" (shown under its HP bar); matching hits do 3 damage, the other does 1.
+Condiments also knock hot dogs — even the giant ones — out of the air. Beat it for the win screen.
 
 - `public/index.html` — the entire game (no build step; Three.js is loaded from a CDN)
 - `wrangler.jsonc` — Cloudflare Pages config (`pages_build_output_dir: ./public`)
@@ -18,11 +24,12 @@ or let them pelt each other. Score is distance travelled.
 | Mouse | look (pointer lock) |
 | Space | jump, wall-jump |
 | Shift | slide |
-| Click | shove a vendor |
+| Click | shove a vendor (ketchup gun in the arena) |
+| Right click / E | mustard gun (arena only) |
 | Air + wall + forward | wall-run |
 | M | mute |
 
-Touch devices get a virtual joystick, drag-to-look, and JUMP / PUNCH buttons.
+Touch devices get a virtual joystick, drag-to-look, and JUMP / SHOVE buttons (plus MUSTARD in the arena).
 
 ## Versioning
 
