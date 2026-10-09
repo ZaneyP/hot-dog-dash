@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="version" content="1.6.0">
+<meta name="version" content="1.6.1">
 <title>Hot Dog Dash</title>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#9fd8ef; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; user-select:none; -webkit-user-select:none; }
@@ -65,7 +65,7 @@
   <div id="bossbar" class="hidden"><div class="bn">THE BIG WIENER</div><div class="bb"><div id="bfill"></div></div><div id="crave" class="k">WANTS: KETCHUP</div></div>
   <div id="banner"></div>
   <div id="tbar"><div id="tfill"></div></div>
-  <div id="ver">v1.6.0</div>
+  <div id="ver">v1.6.1</div>
   <div id="lockHint" class="hidden">MOUSE NOT CAPTURED &middot; CLICK THE GAME TO LOCK</div>
   <div id="touch"><div id="joy"><div id="knob"></div></div><div class="tbtn" id="bJump">JUMP</div><div class="tbtn" id="bPunch">SHOVE</div><div class="tbtn hidden" id="bMust">MUSTARD</div></div>
 </div>
@@ -107,7 +107,7 @@
 <script type="module">
 import * as THREE from 'three';
 
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 document.getElementById('ver').textContent = 'v' + VERSION;
 
 // ---------- Renderer / scene ----------
@@ -1060,7 +1060,7 @@ function smack() {
     if (b.deflected) continue;
     const to = tmpC.copy(b.pos).sub(eye), d = to.length();
     if (d > SMACK_RANGE + b.r || to.normalize().dot(fwd) < 0.35) continue;
-    P.punchT = 0; smacks++; SFX.smack();
+    P.punchT = 0; startSlap(); smacks++; SFX.smack();
     if (b.big) {
       if (boss && boss.alive) {
         // return to sender: straight at his chest, fast, with a beat of hitstop so the moment lands
@@ -1091,7 +1091,7 @@ function smack() {
 
 function punch() {
   if (!P.alive || P.punchT < 0.35) return;
-  P.punchT = 0;
+  P.punchT = 0; startSlap();
   const fwd = tmpA.set(-Math.sin(P.yaw) * Math.cos(P.pitch), Math.sin(P.pitch), -Math.cos(P.yaw) * Math.cos(P.pitch));
   const eye = tmpB.set(P.pos.x, P.pos.y + P.eye, P.pos.z);
   for (const a of agents) {
@@ -1103,35 +1103,43 @@ function punch() {
   noise(0.08, 0.08, 1.5); // whiff
 }
 
-// the slapping arm: a big floppy hot dog made of chained segments. It hangs below the frame at rest and
-// whips across the view on a slap; each segment lags the swing so it flops.
-const ARM_SEGS = 6, ARM_L = 0.17;
-const fist = new THREE.Group();                          // root pivot, bottom-right of the view, just off-screen
+// the slapping arm: a big floppy hot dog (bun underneath, sausage + mustard facing you) built from chained segments,
+// pivoted well below the frame so it wipes horizontally across the whole view. Right-to-left by default; rapid
+// successive slaps alternate direction. Each segment lags the swing so it flops.
+const ARM_SEGS = 6, ARM_L = 0.33, ARM_SWEEP = 1.3;
+const fist = new THREE.Group();
 const armSegs = [];
 {
   let parent = fist;
   for (let i = 0; i < ARM_SEGS; i++) {
-    const g = new THREE.Group(); g.position.y = i === 0 ? 0 : -ARM_L;
-    const dog = makeHotDog(); dog.rotation.x = Math.PI / 2; dog.rotation.z = Math.PI;   // length along -y, sausage facing the camera
-    const sc = 0.9 + (i === ARM_SEGS - 1 ? 0.35 : 0);                                   // fat "hand" at the tip
-    dog.scale.set(sc, sc, ARM_L / 0.5 * 1.15); dog.position.y = -ARM_L / 2;
-    g.add(dog); parent.add(g); armSegs.push(g); parent = g;
+    const g = new THREE.Group(); g.position.y = i === 0 ? 0 : ARM_L;
+    const tip = i === ARM_SEGS - 1;
+    const bun = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, ARM_L - 0.1, 3, 10), bunMat); bun.scale.set(1.5, 1, 0.9);   // wide, flat bun
+    const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, ARM_L - 0.02, 3, 10), sausageMat); sausage.position.z = 0.12;
+    const mustard = new THREE.Mesh(unitBox, mustardMat); mustard.position.z = 0.2; mustard.scale.set(0.035, ARM_L - 0.06, 0.02); mustard.rotation.z = 0.35;
+    const seg = new THREE.Group(); seg.add(bun, sausage, mustard); seg.position.y = ARM_L / 2;
+    if (tip) seg.scale.set(1.25, 1.1, 1.25);
+    g.add(seg); parent.add(g); armSegs.push(g); parent = g;
   }
 }
 camera.add(fist);
-let armSwing = 0.35, armVel = 0;
+let armSwing = -ARM_SWEEP, armVel = 0, armSide = 1, slapFrom = 1, lastSlapEnd = -10;
+// called when a slap starts: continue from whichever side the arm is on, if the last slap just finished
+function startSlap() {
+  if (performance.now() - lastSlapEnd > 700) armSide = 1;
+  slapFrom = armSide; armSide = -armSide;
+}
 function updateFist(dt) {
-  const t = Math.min(P.punchT / 0.38, 1);
-  // swing angle: rest (hanging down, off-screen) -> up-left across the view -> back
-  const rest = 0.35, peak = -2.5;
-  const k = t < 0.45 ? Math.sin(t / 0.45 * Math.PI / 2) : Math.cos((t - 0.45) / 0.55 * Math.PI / 2);
-  const target = rest + (peak - rest) * (t < 1 ? k : 0);
+  const t = Math.min(P.punchT / 0.34, 1);
+  const e = t < 1 ? 1 - Math.pow(1 - t, 2.2) : 1;                   // fast out, soft landing
+  const target = -slapFrom * ARM_SWEEP * (1 - 2 * e);                // +slapFrom: starts on the right, sweeps to the left
   const prev = armSwing; armSwing = target; armVel = (armSwing - prev) / Math.max(dt, 1e-3);
-  fist.visible = t < 1;
-  fist.position.set(0.55, -0.62, -0.75);
-  fist.rotation.set(-0.35, -0.3, armSwing);
-  const bend = clamp(-armVel * 0.028, -0.55, 0.55);
-  for (let i = 0; i < ARM_SEGS; i++) armSegs[i].rotation.z = i === 0 ? 0 : bend * (0.5 + i * 0.35) + Math.sin(performance.now() / 180 + i) * 0.04;
+  if (t >= 1 && P.punchT < 0.4) lastSlapEnd = performance.now();
+  fist.visible = P.punchT < 0.45;
+  fist.position.set(0, -1.5, -1.0);
+  fist.rotation.set(0.12, 0, armSwing);
+  const bend = clamp(-armVel * 0.03, -0.6, 0.6);
+  for (let i = 0; i < ARM_SEGS; i++) armSegs[i].rotation.z = i === 0 ? 0 : bend * (0.4 + i * 0.3) + Math.sin(performance.now() / 160 + i) * 0.03;
 }
 
 // ---------- Game state ----------
